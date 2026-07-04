@@ -24,7 +24,6 @@ CLI(s) for the providers you pick; each handles its own auth/model config.
 | `claude-code` | `claude` | `claude -p "<prompt>"` |
 | `codex` | `codex` | `codex exec "<prompt>"` |
 | `opencode` | `opencode` | `opencode run "<prompt>"` |
-| `mock` | — | deterministic, offline (tests / dry runs) |
 
 ### `plantod login`
 
@@ -40,9 +39,6 @@ plantod login ... --project                               # save to THIS repo in
 Config precedence (low → high): **defaults < global (`~/.config/plantod/config.yaml`) < project (`.plantod/config.yaml`)**.
 `login` writes the global scope by default so settings carry across repos (NFR-02);
 `--project` overrides for one repo. `plantod init` inherits the global defaults.
-
-Offline: set every role's provider to `mock` (`plantod login --role planner --provider mock`, etc.)
-to run the whole flow with no CLIs or keys.
 
 ## Prerequisites
 

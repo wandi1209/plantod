@@ -102,8 +102,9 @@ def next_status(current: TaskStatus, event: TaskEvent) -> TaskStatus:
 # --------------------------------------------------------------------------- #
 # Config (PRD 19.1)
 # --------------------------------------------------------------------------- #
-# Supported backend providers (agentic CLIs, driven headless) + mock.
-PROVIDERS = ("claude-code", "codex", "opencode", "mock")
+# User-selectable backend providers (agentic CLIs, driven headless).
+# ("mock" exists as an internal test double but is not offered to users.)
+PROVIDERS = ("claude-code", "codex", "opencode")
 
 
 class RoleBackend(BaseModel):
