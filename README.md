@@ -1,5 +1,10 @@
 # PLANTOD
 
+[![PyPI version](https://img.shields.io/pypi/v/plantod.svg)](https://pypi.org/project/plantod/)
+[![Python versions](https://img.shields.io/pypi/pyversions/plantod.svg)](https://pypi.org/project/plantod/)
+[![CI](https://github.com/wandi1209/plantod/actions/workflows/ci.yml/badge.svg)](https://github.com/wandi1209/plantod/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **Plan, Task, Orchestrate, Deliver** — a planning-first, repo-aware AI coding orchestrator CLI.
 
 PLANTOD turns a natural-language request ("add login feature") into a structured
