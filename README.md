@@ -15,9 +15,23 @@ decisions and outputs are written to `.plantod/` in the repo so the work is audi
 ## Install
 
 ```bash
+pip install plantod
+# or, isolated global CLI:
+pipx install plantod
+```
+
+Requires Python 3.11+. Then configure your providers with `plantod login`.
+
+<details>
+<summary>From source (development)</summary>
+
+```bash
+git clone https://github.com/wandi1209/plantod && cd plantod
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
+pytest
 ```
+</details>
 
 ## Providers
 
