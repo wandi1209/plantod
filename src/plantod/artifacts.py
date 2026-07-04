@@ -2,12 +2,29 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 _FRONTMATTER_DELIM = "---"
+
+
+def _atomic_write(path: Path, text: str) -> None:
+    """Write via temp file + os.replace so a crash never leaves a half file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=".tmp-", suffix=path.suffix)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
 
 
 # --------------------------------------------------------------------------- #
@@ -29,7 +46,7 @@ def write_doc(path: Path, frontmatter: dict[str, Any], body: str) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     fm = yaml.safe_dump(frontmatter, sort_keys=False, allow_unicode=True).strip()
     content = f"{_FRONTMATTER_DELIM}\n{fm}\n{_FRONTMATTER_DELIM}\n\n{body.strip()}\n"
-    path.write_text(content, encoding="utf-8")
+    _atomic_write(path, content)
     return path
 
 
@@ -52,8 +69,7 @@ def read_doc(path: Path) -> tuple[dict[str, Any], str]:
 def write_json(path: Path, data: dict[str, Any]) -> Path:
     import json
 
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    _atomic_write(path, json.dumps(data, indent=2, ensure_ascii=False))
     return path
 
 

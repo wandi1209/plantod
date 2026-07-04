@@ -70,6 +70,19 @@ class ClaudeAdapter(ModelAdapter):
     def execute(self, task: Task, repo: RepoContext) -> ExecResult:
         raise NotImplementedError("Claude adapter does not execute tasks; use the executor driver.")
 
+    def advise(self, task: Task, reason: str, repo: RepoContext) -> str:
+        sys = (
+            "You are PLANTOD's PLANNER unblocking an escalated task. Give concise, "
+            "concrete guidance (2-5 sentences) so a fast executor can retry within a "
+            "narrow scope. Do not write code."
+        )
+        user = (
+            f"TASK {task.id}: {task.title}\nOBJECTIVE: {task.objective}\n"
+            f"ALLOWED FILES: {task.files_allowed}\nBLOCK REASON: {reason}\n"
+            f"REPO:\n{repo.summary(30)}"
+        )
+        return self._complete(sys, user, max_tokens=1024).strip()
+
     def review(self, request: str, handoffs: list[Handoff], repo: RepoContext) -> ReviewResult:
         hs = "\n\n".join(
             f"[{h.task_id}] {h.summary_of_changes}\n"

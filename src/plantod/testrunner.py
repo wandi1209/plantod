@@ -23,12 +23,12 @@ class TestResult:
         return "passed" if self.passed else "failed"
 
 
-def run_tests(command: str | None, root: Path) -> TestResult:
+def run_tests(command: str | None, root: Path, timeout: int = _TIMEOUT_S) -> TestResult:
     if not command:
         return TestResult(ran=False, passed=False, command=None)
     try:
         proc = subprocess.run(
-            command, cwd=root, shell=True, capture_output=True, text=True, timeout=_TIMEOUT_S,
+            command, cwd=root, shell=True, capture_output=True, text=True, timeout=timeout,
         )
     except subprocess.TimeoutExpired:
         return TestResult(ran=True, passed=False, command=command, output="TIMEOUT")

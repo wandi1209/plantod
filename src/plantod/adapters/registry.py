@@ -23,5 +23,5 @@ def resolve(role: Role, config: Config) -> ModelAdapter:
     if driver == "opencode":
         from .opencode import OpenCodeAdapter
 
-        return OpenCodeAdapter(model=config.executor)
+        return OpenCodeAdapter(model=config.executor, timeout_s=config.exec_timeout_s)
     raise ValueError(f"unknown driver '{driver}' for role {role.value}")

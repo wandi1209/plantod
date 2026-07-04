@@ -50,3 +50,10 @@ class ModelAdapter(ABC):
 
     @abstractmethod
     def review(self, request: str, handoffs: list[Handoff], repo: RepoContext) -> ReviewResult: ...
+
+    def advise(self, task: Task, reason: str, repo: RepoContext) -> str:
+        """Planner guidance for a blocked/escalated task. Override in planner adapters."""
+        return (
+            f"Reduce scope and retry {task.id}. Split any architecture decision into a "
+            f"separate task. Blocking reason: {reason}"
+        )

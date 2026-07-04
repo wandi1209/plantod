@@ -160,6 +160,9 @@ def _prompt_approval(task) -> bool:
 @app.callback(invoke_without_command=True)
 def _main(ctx: typer.Context) -> None:
     """Bare `plantod` opens the interactive session (PRD 11)."""
+    from .config import load_dotenv
+
+    load_dotenv(".")
     if ctx.invoked_subcommand is None:
         from .interactive import repl
 

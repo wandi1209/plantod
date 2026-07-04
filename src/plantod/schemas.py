@@ -112,9 +112,16 @@ class Config(BaseModel):
     auto_run_small_tasks: bool = True
     require_approval_for_architecture: bool = True
     test_before_done: bool = True
+    enforce_scope: bool = True                 # revert out-of-scope executor edits
+    apply_requires_approval: bool = False      # confirm in-scope diff before keeping
     artifact_path: str = ".plantod"
     # model ids resolved by adapters
     claude_model: str = "claude-opus-4-8"
+    # robustness knobs (PRD 23/24)
+    exec_timeout_s: int = 900
+    test_timeout_s: int = 600
+    max_retries: int = 3
+    auto_replan_on_escalation: bool = True
 
 
 # --------------------------------------------------------------------------- #
@@ -134,6 +141,8 @@ class Task(BaseModel):
     escalation_rules: list[str] = Field(default_factory=list)
     assignee_role: Role = Role.executor
     requirement_id: str | None = None
+    escalation_count: int = 0
+    planner_guidance: str = ""
     created_at: str = Field(default_factory=_now)
     updated_at: str = Field(default_factory=_now)
 

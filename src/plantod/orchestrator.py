@@ -8,8 +8,10 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from . import executor, planner, reviewer, ui
+from .adapters import resolve
+from .locking import LockBusy, project_lock
 from .repo import RepoContext, scan_repo
-from .schemas import RiskLevel, Task, TaskEvent, TaskStatus
+from .schemas import RiskLevel, Role, Task, TaskEvent, TaskStatus
 from .state import StateManager
 
 # approval callback: (task) -> bool. Default denies high-risk automatically.
@@ -41,6 +43,37 @@ def _default_approval(_task: Task) -> bool:
     return False
 
 
+def _try_replan(state: StateManager, task: Task, repo: RepoContext) -> bool:
+    """Ask the planner to unblock an escalated task, then resolve it back to ready.
+
+    Returns True if the task is retryable (PRD 12.F escalation -> planner loop).
+    Capped by config.max_retries to avoid infinite loops (PRD 23).
+    """
+    if not state.config.auto_replan_on_escalation:
+        return False
+    if task.escalation_count > state.config.max_retries:
+        state.log(f"{task.id} exceeded replan cap ({state.config.max_retries})")
+        return False
+    planner_adapter = resolve(Role.planner, state.config)
+    reason = ""
+    hp = state.artifact_dir / "handoffs" / f"{task.id}.md"
+    if hp.exists():
+        from .artifacts import read_doc
+
+        fm, _ = read_doc(hp)
+        reason = str(fm.get("risks_notes", ""))
+    try:
+        guidance = planner_adapter.advise(task, reason, repo)
+    except Exception as exc:  # planner unavailable -> leave escalated
+        state.log(f"{task.id} replan failed: {exc}")
+        return False
+    task.planner_guidance = guidance
+    state.advance(task.id, TaskEvent.resolve)   # needs_planner_review -> ready
+    state.log(f"{task.id} replanned: {guidance[:200]}")
+    state.save()
+    return True
+
+
 def run_request(
     state: StateManager,
     request: str,
@@ -49,6 +82,14 @@ def run_request(
     auto_review: bool = False,
 ) -> None:
     """Default flow for a natural-language request (PRD 17.1)."""
+    try:
+        with project_lock(state.artifact_dir):
+            _run_request_locked(state, request, repo, approval, auto_review)
+    except LockBusy as e:
+        ui.error(str(e))
+
+
+def _run_request_locked(state, request, repo, approval, auto_review) -> None:
     approval = approval or _default_approval
     repo = repo or scan_repo(state.root)
 
@@ -75,13 +116,17 @@ def run_request(
                 ui.warn(f"{task.id} skipped (not approved). Stopping run.")
                 break
 
-        handoff = executor.run_task(state, task, repo)
+        executor.run_task(state, task, repo)
         hp = state.artifact_dir / "handoffs" / f"{task.id}.md"
-        if state.get_task(task.id).status is TaskStatus.needs_planner_review:
+        current = state.get_task(task.id)
+        if current.status is TaskStatus.needs_planner_review:
             ui.error(f"{task.id} escalated -> needs_planner_review. Handoff: {hp}")
-            ui.warn("Resolve escalation before continuing (plantod resume).")
+            if _try_replan(state, current, repo):
+                ui.info(f"Planner advised {task.id}; retrying (attempt {current.escalation_count}).")
+                continue
+            ui.warn("Escalation unresolved. Fix and run `plantod resume`.")
             break
-        ui.ok(f"{task.id} -> {state.get_task(task.id).status.value}. Handoff: {hp}")
+        ui.ok(f"{task.id} -> {current.status.value}. Handoff: {hp}")
 
     if auto_review and plan.requirement_id:
         review = reviewer.review_requirement(state, plan.requirement_id, repo)

@@ -21,9 +21,10 @@ _TIMEOUT_S = 900
 class OpenCodeAdapter(ModelAdapter):
     name = "opencode"
 
-    def __init__(self, model: str | None = None, binary: str = "opencode"):
+    def __init__(self, model: str | None = None, binary: str = "opencode", timeout_s: int = _TIMEOUT_S):
         self.model = model
         self.binary = binary
+        self.timeout_s = timeout_s
 
     def _git_dirty(self, root: Path) -> list[str]:
         try:
@@ -53,7 +54,7 @@ class OpenCodeAdapter(ModelAdapter):
         before = set(self._git_dirty(repo.root))
         try:
             proc = subprocess.run(
-                cmd, cwd=repo.root, capture_output=True, text=True, timeout=_TIMEOUT_S,
+                cmd, cwd=repo.root, capture_output=True, text=True, timeout=self.timeout_s,
             )
         except subprocess.TimeoutExpired:
             return ExecResult(escalate=True, escalate_reason="executor timed out", raw="")
@@ -82,9 +83,11 @@ class OpenCodeAdapter(ModelAdapter):
         allowed = ", ".join(task.files_allowed) or "(unspecified — stay minimal)"
         forbidden = ", ".join(task.files_forbidden) or "(none)"
         crit = "\n".join(f"- {c}" for c in task.acceptance_criteria)
+        guidance = f"Planner guidance: {task.planner_guidance}\n" if task.planner_guidance else ""
         return (
             f"Task {task.id}: {task.title}\n"
             f"Objective: {task.objective}\n"
+            f"{guidance}"
             f"You MAY only edit these files: {allowed}\n"
             f"You MUST NOT edit: {forbidden}\n"
             f"Acceptance criteria:\n{crit}\n"

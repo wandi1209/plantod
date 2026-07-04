@@ -52,6 +52,9 @@ class MockAdapter(ModelAdapter):
             raw="mock",
         )
 
+    def advise(self, task: Task, reason: str, repo: RepoContext) -> str:
+        return f"(mock) narrow {task.id} scope and retry. reason: {reason}"
+
     def review(self, request: str, handoffs: list[Handoff], repo: RepoContext) -> ReviewResult:
         return ReviewResult(
             verdict="approve",

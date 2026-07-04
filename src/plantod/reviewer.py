@@ -31,7 +31,12 @@ def review_requirement(state: StateManager, requirement_id: str, repo: RepoConte
     handoffs = _load_handoffs(state, task_ids)
 
     adapter = resolve(Role.reviewer, state.config)
-    result = adapter.review(req.request, handoffs, repo)
+    from .retry import with_retries
+
+    result = with_retries(
+        lambda: adapter.review(req.request, handoffs, repo),
+        attempts=state.config.max_retries,
+    )
 
     review = Review(
         id=f"{requirement_id}-review",
