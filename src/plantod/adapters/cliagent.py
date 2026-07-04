@@ -38,6 +38,8 @@ class _ClaudeCode(ProviderSpec):
         args = [self.binary, "-p", prompt]
         if model:
             args += ["--model", model]
+        # executor needs to actually write files; read-only roles stay default
+        args += ["--permission-mode", "acceptEdits" if edit else "plan"]
         return args
 
 

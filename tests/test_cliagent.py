@@ -6,8 +6,8 @@ from plantod.schemas import Config, Role, RoleBackend
 
 
 def test_argv_shapes():
-    assert CliAgent("claude-code").spec.argv("hi", None) == ["claude", "-p", "hi"]
-    assert CliAgent("claude-code", "opus").spec.argv("hi", "opus") == ["claude", "-p", "hi", "--model", "opus"]
+    assert CliAgent("claude-code").spec.argv("hi", None) == ["claude", "-p", "hi", "--permission-mode", "plan"]
+    assert CliAgent("claude-code").spec.argv("hi", None, edit=True)[-2:] == ["--permission-mode", "acceptEdits"]
     assert CliAgent("codex").spec.argv("hi", None) == ["codex", "exec", "hi"]
     assert CliAgent("codex", "o4").spec.argv("hi", "o4") == ["codex", "exec", "--model", "o4", "hi"]
     # opencode selects a read-only 'plan' agent by default
