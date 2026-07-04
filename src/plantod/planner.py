@@ -46,8 +46,13 @@ def validate_dependencies(tasks: list[Task]) -> None:
             visit(node, [node])
 
 
-def make_plan(state: StateManager, request: str, repo: RepoContext) -> tuple[Plan, list[Task]]:
-    """Run the planner adapter and persist requirement, plan, and tasks."""
+def make_plan(
+    state: StateManager, request: str, repo: RepoContext, context: str = ""
+) -> tuple[Plan, list[Task]]:
+    """Run the planner adapter and persist requirement, plan, and tasks.
+
+    `context` is optional prior-conversation text for context-aware follow-ups.
+    """
     adapter = resolve(Role.planner, state.config)
 
     req_id = f"R{len(state.board.requirements) + 1:03d}"
@@ -55,7 +60,10 @@ def make_plan(state: StateManager, request: str, repo: RepoContext) -> tuple[Pla
 
     from .retry import with_retries
 
-    result = with_retries(lambda: adapter.plan(request, repo), attempts=state.config.max_retries)
+    augmented = request if not context else (
+        f"Conversation so far:\n{context}\n\nNew request: {request}"
+    )
+    result = with_retries(lambda: adapter.plan(augmented, repo), attempts=state.config.max_retries)
     state.record_usage("planner", adapter, req_id)
 
     plan_id = f"{date.today().isoformat()}-{_slug(request) or 'plan'}"

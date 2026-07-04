@@ -219,11 +219,19 @@ class Board(BaseModel):
     updated_at: str = Field(default_factory=_now)
 
 
+class Turn(BaseModel):
+    """One conversation turn in the interactive session."""
+
+    role: str                                # "user" | "plantod"
+    text: str
+    created_at: str = Field(default_factory=_now)
+
+
 class Session(BaseModel):
     """Lightweight session state persisted as session.json (PRD 12.2)."""
 
     current_requirement_id: str | None = None
     current_plan_id: str | None = None
     last_task_id: str | None = None
-    history: list[str] = Field(default_factory=list)   # summary + last-N turns
+    turns: list[Turn] = Field(default_factory=list)    # multi-turn chat memory
     updated_at: str = Field(default_factory=_now)

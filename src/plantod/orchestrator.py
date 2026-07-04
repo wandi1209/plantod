@@ -81,23 +81,24 @@ def run_request(
     repo: RepoContext | None = None,
     approval: ApprovalFn | None = None,
     auto_review: bool = False,
+    context: str = "",
 ) -> None:
     """Default flow for a natural-language request (PRD 17.1)."""
     try:
         with project_lock(state.artifact_dir):
-            _run_request_locked(state, request, repo, approval, auto_review)
+            _run_request_locked(state, request, repo, approval, auto_review, context)
     except LockBusy as e:
         ui.error(str(e))
 
 
-def _run_request_locked(state, request, repo, approval, auto_review) -> None:
+def _run_request_locked(state, request, repo, approval, auto_review, context="") -> None:
     approval = approval or _default_approval
     repo = repo or scan_repo(state.root)
 
     ui.info(f"Reading request: {request}")
     ui.info("Scanning repository...")
 
-    plan, tasks = planner.make_plan(state, request, repo)
+    plan, tasks = planner.make_plan(state, request, repo, context=context)
     plan_path = state.artifact_dir / "plans" / f"{plan.id}.md"
     ui.ok(f"Plan created: {plan_path}")
     ui.ok(f"{len(tasks)} tasks generated")

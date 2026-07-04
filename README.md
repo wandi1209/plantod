@@ -80,8 +80,25 @@ plantod run T001                   # run a single task
 plantod review R001                # final review for a requirement
 plantod status                     # board summary
 plantod resume                     # where the last session left off
-plantod                            # interactive chat-like session
+plantod                            # interactive chat session (see below)
+plantod usage                      # estimated token usage / cost
 ```
+
+### Interactive session
+
+Run bare `plantod` for a Claude-Code-style chat: an inline REPL with scrollback,
+arrow-key history, ctrl-r search, slash-command autocomplete, and **multi-turn
+memory** — follow-ups keep context, so after "add login" you can say "now add
+logout too" and the planner understands the thread.
+
+```
+plantod › add a health-check endpoint
+plantod › now add a test for it        # remembers the previous turn
+plantod › /tasks                       # slash commands for everything
+```
+
+Slash commands: `/help /status /tasks /usage /review <RID> /resume /clear /quit`.
+Conversation persists in `.plantod/session.json` (last 40 turns); `/clear` resets it.
 
 ## Why planning-first saves tokens (cost model)
 
