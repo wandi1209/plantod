@@ -9,18 +9,36 @@ description = "Planning-first, repo-aware AI coding orchestrator CLI"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "PLANTOD" }]
-keywords = ["ai", "cli", "coding", "orchestrator", "planning"]
+authors = [{ name = "PLANTOD", email = "admin@beinsoft.co.id" }]
+keywords = ["ai", "cli", "coding", "orchestrator", "planning", "agent", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Utilities",
+]
 dependencies = [
     "typer>=0.12",
     "rich>=13.7",
     "pydantic>=2.6",
     "pyyaml>=6.0",
-    "anthropic>=0.39",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "build>=1.2", "twine>=5.0"]
+
+[project.urls]
+Homepage = "https://github.com/wandi1209/plantod"
+Repository = "https://github.com/wandi1209/plantod"
+Issues = "https://github.com/wandi1209/plantod/issues"
 
 [project.scripts]
 plantod = "plantod.cli:app"
