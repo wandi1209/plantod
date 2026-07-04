@@ -7,3 +7,7 @@ __pycache__/
 build/
 dist/
 .env
+
+# local planning docs — kept out of the repo intentionally
+PRD.md
+checklist.md
