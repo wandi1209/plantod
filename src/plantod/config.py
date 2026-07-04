@@ -93,6 +93,14 @@ def update_role_backend(
     return raw
 
 
+def update_value(scope_path: Path, key: str, value: Any) -> dict[str, Any]:
+    """Set a single top-level config key in the given scope file."""
+    raw = _read_raw(scope_path)
+    raw[key] = value
+    _write_raw(scope_path, raw)
+    return raw
+
+
 # --------------------------------------------------------------------------- #
 # .env auto-load (kept for provider CLIs that read env vars)
 # --------------------------------------------------------------------------- #

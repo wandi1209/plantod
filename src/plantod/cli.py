@@ -14,6 +14,7 @@ from .config import (
     global_config_path,
     load_global_config,
     update_role_backend,
+    update_value,
 )
 from .repo import scan_repo
 from .schemas import PROVIDERS, TaskEvent
@@ -49,9 +50,9 @@ def init() -> None:
     state.initialize()
     ui.ok(f"Initialized {state.artifact_dir}")
     c = state.config
-    ui.info(f"Providers — planner: {c.planner.provider} | executor: {c.executor.provider} | reviewer: {c.reviewer.provider}")
+    ui.info(f"Mode: {c.mode} | Providers — planner: {c.planner.provider} | executor: {c.executor.provider} | reviewer: {c.reviewer.provider}")
     ui.info(f"Detected test command: {repo.test_command or 'none'}")
-    ui.info("Set providers with `plantod login`.")
+    ui.info("Set providers with `plantod login`, run mode with `plantod mode auto`.")
 
 
 _ROLES = ("planner", "executor", "reviewer")
@@ -110,6 +111,26 @@ def login(
 
 
 @app.command()
+def mode(
+    value: str = typer.Argument(None, help="auto | approval (omit to show current)"),
+    project: bool = typer.Option(False, "--project", help="Save to this repo instead of global"),
+) -> None:
+    """Set run mode: `auto` (unattended) or `approval` (gate risky tasks)."""
+    state = _state()
+    if value is None:
+        ui.info(f"Current mode: {state.config.mode}")
+        return
+    if value not in ("auto", "approval"):
+        ui.error("mode must be 'auto' or 'approval'")
+        raise typer.Exit(1)
+    scope = config_path(state.artifact_dir) if project else global_config_path()
+    update_value(scope, "mode", value)
+    ui.ok(f"mode: {value} -> {scope}")
+    if value == "auto":
+        ui.warn("Auto mode: tasks plan, execute, and review unattended — no approval prompts.")
+
+
+@app.command()
 def status() -> None:
     """Show board summary and current session."""
     state = _state()
@@ -118,7 +139,7 @@ def status() -> None:
     for t in state.board.tasks.values():
         counts[t.status.value] = counts.get(t.status.value, 0) + 1
     c = state.config
-    ui.info(f"Providers — planner: {c.planner.provider} | executor: {c.executor.provider} | reviewer: {c.reviewer.provider}")
+    ui.info(f"Mode: {c.mode} | Providers — planner: {c.planner.provider} | executor: {c.executor.provider} | reviewer: {c.reviewer.provider}")
     ui.info(f"Requirements: {len(state.board.requirements)} | Plans: {len(state.board.plans)} | Tasks: {len(state.board.tasks)}")
     for status_name, n in sorted(counts.items()):
         ui.info(f"  {status_name}: {n}")

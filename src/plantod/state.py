@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import artifacts
-from .config import load_config, save_config
+from .config import load_config
 from .schemas import (
     Board,
     Config,
@@ -61,7 +61,13 @@ class StateManager:
     # -- init -------------------------------------------------------------- #
     def initialize(self) -> None:
         artifacts.scaffold(self.artifact_dir)
-        save_config(self.config, self.artifact_dir)
+        # Write a minimal project config (not a full snapshot) so global defaults
+        # stay authoritative; `login/mode --project` add overrides here as needed.
+        from .config import config_path
+
+        cp = config_path(self.artifact_dir)
+        if not cp.exists():
+            cp.write_text("{}\n", encoding="utf-8")
         self.save()
 
     # -- load/save --------------------------------------------------------- #

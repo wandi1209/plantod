@@ -148,7 +148,7 @@ def _status(state: StateManager) -> None:
     for t in state.board.tasks.values():
         counts[t.status.value] = counts.get(t.status.value, 0) + 1
     c = state.config
-    ui.info(f"Providers — planner: {c.planner.provider} | executor: {c.executor.provider} | reviewer: {c.reviewer.provider}")
+    ui.info(f"Mode: {c.mode} | Providers — planner: {c.planner.provider} | executor: {c.executor.provider} | reviewer: {c.reviewer.provider}")
     ui.info(
         f"Requirements: {len(state.board.requirements)} | Tasks: {len(state.board.tasks)} | "
         + ", ".join(f"{k}={v}" for k, v in sorted(counts.items()))

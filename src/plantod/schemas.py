@@ -118,6 +118,8 @@ class Config(BaseModel):
     planner: RoleBackend = Field(default_factory=lambda: RoleBackend(provider="claude-code"))
     executor: RoleBackend = Field(default_factory=lambda: RoleBackend(provider="opencode"))
     reviewer: RoleBackend = Field(default_factory=lambda: RoleBackend(provider="claude-code"))
+    # "approval" = gate risky tasks; "auto" = plan/execute/review unattended
+    mode: str = "approval"
     auto_run_small_tasks: bool = True
     require_approval_for_architecture: bool = True
     test_before_done: bool = True

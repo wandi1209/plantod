@@ -24,6 +24,8 @@ _MAX_AUTORUN_FILES = 3
 
 def should_auto_run(task: Task, config) -> bool:
     """Auto-run only low / controlled-medium risk with small clear scope (PRD 17.3)."""
+    if config.mode == "auto":
+        return True                            # unattended: run everything
     if not config.auto_run_small_tasks:
         return False
     if task.risk_level is _HIGH:
@@ -93,6 +95,8 @@ def run_request(
 
 def _run_request_locked(state, request, repo, approval, auto_review, context="") -> None:
     approval = approval or _default_approval
+    if state.config.mode == "auto":
+        auto_review = True                     # run through review to done, unattended
     repo = repo or scan_repo(state.root)
 
     ui.info(f"Reading request: {request}")

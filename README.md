@@ -59,6 +59,21 @@ Config precedence (low → high): **defaults < global (`~/.config/plantod/config
 `login` writes the global scope by default so settings carry across repos (NFR-02);
 `--project` overrides for one repo. `plantod init` inherits the global defaults.
 
+### Run mode
+
+```bash
+plantod mode              # show current mode
+plantod mode auto         # unattended: plan, execute, and review to done, no prompts
+plantod mode approval     # default: gate risky/wide-scope tasks for your approval
+plantod mode auto --project   # set for this repo only
+```
+
+- **approval** (default) — small, low-risk, testable tasks auto-run; anything risky
+  or wide-scope waits for your yes/no.
+- **auto** — every task runs unattended through execution and final review. The
+  scope guard and escalation loop still apply, so out-of-scope edits are reverted
+  and blocked tasks are re-planned automatically.
+
 ## Prerequisites
 
 - Install the CLI for each provider you configure (see table above); each tool
@@ -176,7 +191,8 @@ work, which is where "just let the big model code" runs burn tokens on churn.
 |-----|---------|---------|
 | `planner` / `executor` / `reviewer` | `{provider, model}` per role | backend for each role — set via `plantod login` |
 | default providers | claude-code / opencode / claude-code | planner / executor / reviewer |
-| `auto_run_small_tasks` | true | auto-run low-risk tasks |
+| `mode` | approval | `approval` (gate risky) or `auto` (unattended to done) |
+| `auto_run_small_tasks` | true | auto-run low-risk tasks (approval mode) |
 | `require_approval_for_architecture` | true | gate high-risk changes |
 | `test_before_done` | true | run tests before marking done |
 | `enforce_scope` | true | revert executor edits outside `files_allowed` |
