@@ -102,26 +102,35 @@ def next_status(current: TaskStatus, event: TaskEvent) -> TaskStatus:
 # --------------------------------------------------------------------------- #
 # Config (PRD 19.1)
 # --------------------------------------------------------------------------- #
+# Supported backend providers (agentic CLIs, driven headless) + mock.
+PROVIDERS = ("claude-code", "codex", "opencode", "mock")
+
+
+class RoleBackend(BaseModel):
+    """Provider + model for one role (planner / executor / reviewer)."""
+
+    provider: str = "mock"
+    model: str | None = None                   # None -> provider's own default
+
+
 class Config(BaseModel):
-    planner: str = "claude-opus"
-    executor: str = "deepseek-v4-flash"
-    reviewer: str = "claude-opus"
-    executor_driver: str = "opencode"          # opencode | mock
-    planner_driver: str = "claude"             # claude | mock
-    reviewer_driver: str = "claude"            # claude | mock
+    planner: RoleBackend = Field(default_factory=lambda: RoleBackend(provider="claude-code"))
+    executor: RoleBackend = Field(default_factory=lambda: RoleBackend(provider="opencode"))
+    reviewer: RoleBackend = Field(default_factory=lambda: RoleBackend(provider="claude-code"))
     auto_run_small_tasks: bool = True
     require_approval_for_architecture: bool = True
     test_before_done: bool = True
     enforce_scope: bool = True                 # revert out-of-scope executor edits
     apply_requires_approval: bool = False      # confirm in-scope diff before keeping
     artifact_path: str = ".plantod"
-    # model ids resolved by adapters
-    claude_model: str = "claude-opus-4-8"
     # robustness knobs (PRD 23/24)
     exec_timeout_s: int = 900
     test_timeout_s: int = 600
     max_retries: int = 3
     auto_replan_on_escalation: bool = True
+
+    def backend(self, role: "Role") -> RoleBackend:
+        return getattr(self, role.value)
 
 
 # --------------------------------------------------------------------------- #

@@ -6,9 +6,17 @@ from pathlib import Path
 
 import typer
 
+import shutil
+
 from . import orchestrator, reviewer, ui
+from .config import (
+    config_path,
+    global_config_path,
+    load_global_config,
+    update_role_backend,
+)
 from .repo import scan_repo
-from .schemas import TaskEvent
+from .schemas import PROVIDERS, TaskEvent
 from .state import StateManager
 
 app = typer.Typer(
@@ -40,7 +48,65 @@ def init() -> None:
         return
     state.initialize()
     ui.ok(f"Initialized {state.artifact_dir}")
+    c = state.config
+    ui.info(f"Providers — planner: {c.planner.provider} | executor: {c.executor.provider} | reviewer: {c.reviewer.provider}")
     ui.info(f"Detected test command: {repo.test_command or 'none'}")
+    ui.info("Set providers with `plantod login`.")
+
+
+_ROLES = ("planner", "executor", "reviewer")
+
+
+def _verify_provider(provider: str) -> None:
+    if provider == "mock":
+        return
+    from .adapters.cliagent import provider_binary
+
+    binary = provider_binary(provider)
+    if binary and shutil.which(binary) is None:
+        ui.warn(f"'{binary}' CLI not found on PATH — install it before running {provider}.")
+    else:
+        ui.ok(f"{provider} ready ({binary or 'builtin'})")
+
+
+@app.command()
+def login(
+    role: str = typer.Option(None, help=f"One of: {', '.join(_ROLES)}"),
+    provider: str = typer.Option(None, help=f"One of: {', '.join(PROVIDERS)}"),
+    model: str = typer.Option(None, help="Model id (optional; provider default if omitted)"),
+    project: bool = typer.Option(False, "--project", help="Save to this repo instead of global"),
+) -> None:
+    """Configure provider + model per role (global by default, or --project)."""
+    scope_path = config_path(StateManager(".").artifact_dir) if project else global_config_path()
+
+    # non-interactive: set a single role
+    if role or provider:
+        if role not in _ROLES:
+            ui.error(f"--role must be one of: {', '.join(_ROLES)}")
+            raise typer.Exit(1)
+        if provider not in PROVIDERS:
+            ui.error(f"--provider must be one of: {', '.join(PROVIDERS)}")
+            raise typer.Exit(1)
+        update_role_backend(scope_path, role, provider, model)
+        _verify_provider(provider)
+        ui.ok(f"{role}: {provider}" + (f" ({model})" if model else "") + f" -> {scope_path}")
+        return
+
+    # interactive wizard
+    ui.info(f"Configuring providers ({'project' if project else 'global'}: {scope_path})")
+    current = StateManager(".").config if project else load_global_config()
+    for r in _ROLES:
+        cur = getattr(current, r)
+        ui.console.print(f"\n[bold]{r}[/bold] (current: {cur.provider}{f'/{cur.model}' if cur.model else ''})")
+        chosen = typer.prompt(f"  provider {list(PROVIDERS)}", default=cur.provider)
+        while chosen not in PROVIDERS:
+            ui.error(f"  pick one of {', '.join(PROVIDERS)}")
+            chosen = typer.prompt("  provider", default=cur.provider)
+        mdl = typer.prompt("  model (blank = provider default)", default=cur.model or "", show_default=False)
+        mdl = mdl.strip() or None
+        update_role_backend(scope_path, r, chosen, mdl)
+        _verify_provider(chosen)
+    ui.ok(f"Saved provider config -> {scope_path}")
 
 
 @app.command()
@@ -51,6 +117,8 @@ def status() -> None:
     counts: dict[str, int] = {}
     for t in state.board.tasks.values():
         counts[t.status.value] = counts.get(t.status.value, 0) + 1
+    c = state.config
+    ui.info(f"Providers — planner: {c.planner.provider} | executor: {c.executor.provider} | reviewer: {c.reviewer.provider}")
     ui.info(f"Requirements: {len(state.board.requirements)} | Plans: {len(state.board.plans)} | Tasks: {len(state.board.tasks)}")
     for status_name, n in sorted(counts.items()):
         ui.info(f"  {status_name}: {n}")

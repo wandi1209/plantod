@@ -8,20 +8,13 @@ from .mock import MockAdapter
 
 
 def resolve(role: Role, config: Config) -> ModelAdapter:
-    driver = {
-        Role.planner: config.planner_driver,
-        Role.executor: config.executor_driver,
-        Role.reviewer: config.reviewer_driver,
-    }[role]
-
-    if driver == "mock":
+    backend = config.backend(role)
+    if backend.provider == "mock":
         return MockAdapter()
-    if driver == "claude":
-        from .claude import ClaudeAdapter
+    from .cliagent import CliAgent
 
-        return ClaudeAdapter(model=config.claude_model)
-    if driver == "opencode":
-        from .opencode import OpenCodeAdapter
-
-        return OpenCodeAdapter(model=config.executor, timeout_s=config.exec_timeout_s)
-    raise ValueError(f"unknown driver '{driver}' for role {role.value}")
+    return CliAgent(
+        provider=backend.provider,
+        model=backend.model,
+        timeout_s=config.exec_timeout_s,
+    )

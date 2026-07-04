@@ -1,15 +1,13 @@
 from plantod import executor, orchestrator
 from plantod.repo import scan_repo
-from plantod.schemas import Config, RiskLevel, Task, TaskEvent, TaskStatus
+from plantod.schemas import Config, RiskLevel, RoleBackend, Task, TaskEvent, TaskStatus
 from plantod.state import StateManager
 
 
 def _state(tmp_path) -> StateManager:
     state = StateManager(tmp_path)
-    state.config = Config(
-        planner_driver="mock", executor_driver="mock", reviewer_driver="mock",
-        test_before_done=False, max_retries=2,
-    )
+    m = RoleBackend(provider="mock")
+    state.config = Config(planner=m, executor=m, reviewer=m, test_before_done=False, max_retries=2)
     state.initialize()
     return state
 

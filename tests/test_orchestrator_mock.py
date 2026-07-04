@@ -1,16 +1,16 @@
 from plantod import orchestrator
-from plantod.schemas import Config, TaskStatus
+from plantod.schemas import Config, RoleBackend, TaskStatus
 from plantod.state import StateManager
+
+
+def _mock() -> Config:
+    m = RoleBackend(provider="mock")
+    return Config(planner=m, executor=m, reviewer=m, test_before_done=False)
 
 
 def _mock_state(tmp_path) -> StateManager:
     state = StateManager(tmp_path)
-    state.config = Config(
-        planner_driver="mock",
-        executor_driver="mock",
-        reviewer_driver="mock",
-        test_before_done=False,
-    )
+    state.config = _mock()
     state.initialize()
     return state
 

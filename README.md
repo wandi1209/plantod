@@ -14,17 +14,49 @@ python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
+## Providers
+
+PLANTOD drives **agentic coding CLIs** as its backends — one per role. Install the
+CLI(s) for the providers you pick; each handles its own auth/model config.
+
+| Provider | Binary | Invocation |
+|----------|--------|-----------|
+| `claude-code` | `claude` | `claude -p "<prompt>"` |
+| `codex` | `codex` | `codex exec "<prompt>"` |
+| `opencode` | `opencode` | `opencode run "<prompt>"` |
+| `mock` | — | deterministic, offline (tests / dry runs) |
+
+### `plantod login`
+
+Set the provider + model for each role (planner / executor / reviewer):
+
+```bash
+plantod login                                             # interactive wizard (all roles)
+plantod login --role executor --provider codex --model o4 # non-interactive, one role
+plantod login --role planner  --provider claude-code      # model optional -> provider default
+plantod login ... --project                               # save to THIS repo instead of global
+```
+
+Config precedence (low → high): **defaults < global (`~/.config/plantod/config.yaml`) < project (`.plantod/config.yaml`)**.
+`login` writes the global scope by default so settings carry across repos (NFR-02);
+`--project` overrides for one repo. `plantod init` inherits the global defaults.
+
+Offline: set every role's provider to `mock` (`plantod login --role planner --provider mock`, etc.)
+to run the whole flow with no CLIs or keys.
+
 ## Prerequisites
 
-- **Planner / reviewer** → Anthropic Claude: set `ANTHROPIC_API_KEY` (or put it in `.env`, auto-loaded — see `.env.example`).
-- **Executor** → DeepSeek via [OpenCode](https://opencode.ai): install the `opencode` CLI and configure a model.
-- **Offline / no keys**: set the drivers to `mock` in `.plantod/config.yaml`
-  (`planner_driver`, `executor_driver`, `reviewer_driver`) to run the full flow deterministically.
+- Install the CLI for each provider you configure (see table above); each tool
+  manages its own authentication.
+- `.env` in the repo root is auto-loaded into the environment (see `.env.example`)
+  for any provider that reads env vars.
+- A **git repo** is required for the scope guard — run `plantod init` inside one.
 
 ## Usage
 
 ```bash
-plantod init                       # detect repo, scaffold .plantod/
+plantod login                      # pick provider + model per role (see Providers)
+plantod init                       # detect repo, scaffold .plantod/ (inherits global)
 plantod plan "add login feature"   # plan + break into tasks + run the default flow
 plantod plan "..." --yes --review  # approve gated tasks, run final review
 plantod tasks                      # list tasks + status
@@ -87,8 +119,8 @@ work, which is where "just let the big model code" runs burn tokens on churn.
 
 | Key | Default | Meaning |
 |-----|---------|---------|
-| `planner` / `executor` / `reviewer` | claude-opus / deepseek-v4-flash / claude-opus | model names |
-| `planner_driver` / `executor_driver` / `reviewer_driver` | claude / opencode / claude | backend (`claude` \| `opencode` \| `mock`) |
+| `planner` / `executor` / `reviewer` | `{provider, model}` per role | backend for each role — set via `plantod login` |
+| default providers | claude-code / opencode / claude-code | planner / executor / reviewer |
 | `auto_run_small_tasks` | true | auto-run low-risk tasks |
 | `require_approval_for_architecture` | true | gate high-risk changes |
 | `test_before_done` | true | run tests before marking done |
