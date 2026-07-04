@@ -97,10 +97,33 @@ routed_total ≈ 43.3K  vs  230K   →  ~5× cheaper for this mix
 The exact multiple depends on your models and the plan/execution token ratio —
 plug in current per-token prices for your planner and executor to get real numbers.
 
-> **Honest caveat:** these figures are an illustrative model, not a benchmark.
-> PLANTOD does not yet meter real token usage — **cost tracking is on the v2
-> roadmap** (PRD §27). The structural saving (route bulk edits to a cheap model,
-> keep reasoning on a strong one) holds regardless; the exact ratio is yours to measure.
+> **Honest caveat:** the table above is an illustrative model, not a benchmark.
+> PLANTOD *does* meter usage, but as an **estimate** — provider CLIs run headless
+> and don't reliably report token counts, so figures are derived from text length
+> (~4 chars/token). Good for relative comparison, not billing. The structural saving
+> (route bulk edits to a cheap model, keep reasoning on a strong one) holds regardless.
+
+### Seeing your own numbers
+
+Every run prints an estimated token line, and `plantod usage` shows the breakdown:
+
+```
+$ plantod usage
+         Estimated usage (heuristic)
+ Provider   Calls   Tokens in   Tokens out
+ opencode       4      12,400        8,900
+ claude-code    2       3,100        1,200
+ Total ~ 25,600 tokens ~ $0.42
+```
+
+Add a `prices` table to your config to get the cost estimate (USD per 1M tokens,
+`[input, output]` per provider):
+
+```yaml
+prices:
+  claude-code: [15, 75]
+  opencode: [0.3, 0.9]
+```
 
 Beyond cost, the planning-first flow also reduces *wasted* tokens: scoped tasks and
 the scope guard stop the executor from sprawling across the repo and re-generating

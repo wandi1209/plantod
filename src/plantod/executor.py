@@ -50,6 +50,8 @@ def run_task(state, task: Task, repo: RepoContext) -> Handoff:
     except Exception as exc:  # backend failed hard after retries
         return _escalate(state, task, adapter.name, [], "", f"executor error: {exc}")
 
+    state.record_usage("executor", adapter, task.requirement_id)
+
     if result.escalate:
         return _escalate(state, task, adapter.name, result.files_changed, result.summary, result.escalate_reason)
 

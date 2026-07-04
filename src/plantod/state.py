@@ -162,6 +162,21 @@ class StateManager:
             body,
         )
 
+    def record_usage(self, role: str, adapter, requirement_id: str | None = None) -> None:
+        """Append the adapter's most-recent estimated token usage to the board."""
+        from .schemas import UsageEntry
+
+        rid = requirement_id or self.session.current_requirement_id
+        self.board.usage.append(
+            UsageEntry(
+                role=role,
+                provider=getattr(adapter, "name", "unknown"),
+                tokens_in=getattr(adapter, "last_tokens_in", 0),
+                tokens_out=getattr(adapter, "last_tokens_out", 0),
+                requirement_id=rid,
+            )
+        )
+
     def log(self, message: str) -> None:
         log_path = self.artifact_dir / "logs" / "plantod.log"
         log_path.parent.mkdir(parents=True, exist_ok=True)

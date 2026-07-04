@@ -56,6 +56,7 @@ def make_plan(state: StateManager, request: str, repo: RepoContext) -> tuple[Pla
     from .retry import with_retries
 
     result = with_retries(lambda: adapter.plan(request, repo), attempts=state.config.max_retries)
+    state.record_usage("planner", adapter, req_id)
 
     plan_id = f"{date.today().isoformat()}-{_slug(request) or 'plan'}"
     tasks: list[Task] = []

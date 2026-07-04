@@ -145,7 +145,12 @@ class CliAgent(ModelAdapter):
             raise CliAgentError(f"{self.name} failed to launch: {e}") from e
         if proc.returncode != 0:
             raise CliAgentError(f"{self.name} exited {proc.returncode}: {(proc.stderr or '')[-300:]}")
-        return proc.stdout or ""
+        out = proc.stdout or ""
+        from ..usage import estimate_tokens
+
+        self.last_tokens_in = estimate_tokens(prompt)
+        self.last_tokens_out = estimate_tokens(out)
+        return out
 
     # -- roles ------------------------------------------------------------- #
     def plan(self, request: str, repo: RepoContext) -> PlanResult:

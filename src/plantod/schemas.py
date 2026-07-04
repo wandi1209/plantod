@@ -129,6 +129,8 @@ class Config(BaseModel):
     test_timeout_s: int = 600
     max_retries: int = 3
     auto_replan_on_escalation: bool = True
+    # optional cost estimate: provider -> [usd_per_1M_input, usd_per_1M_output]
+    prices: dict[str, list[float]] = Field(default_factory=dict)
 
     def backend(self, role: "Role") -> RoleBackend:
         return getattr(self, role.value)
@@ -196,12 +198,24 @@ class Review(BaseModel):
     created_at: str = Field(default_factory=_now)
 
 
+class UsageEntry(BaseModel):
+    """One model call's estimated token usage (heuristic, not provider-reported)."""
+
+    role: str
+    provider: str
+    tokens_in: int = 0
+    tokens_out: int = 0
+    requirement_id: str | None = None
+    created_at: str = Field(default_factory=_now)
+
+
 class Board(BaseModel):
     """Aggregate task board persisted as board.json (PRD 12.2)."""
 
     tasks: dict[str, Task] = Field(default_factory=dict)
     requirements: dict[str, Requirement] = Field(default_factory=dict)
     plans: dict[str, Plan] = Field(default_factory=dict)
+    usage: list[UsageEntry] = Field(default_factory=list)
     updated_at: str = Field(default_factory=_now)
 
 

@@ -67,6 +67,7 @@ def _try_replan(state: StateManager, task: Task, repo: RepoContext) -> bool:
     except Exception as exc:  # planner unavailable -> leave escalated
         state.log(f"{task.id} replan failed: {exc}")
         return False
+    state.record_usage("planner", planner_adapter, task.requirement_id)
     task.planner_guidance = guidance
     state.advance(task.id, TaskEvent.resolve)   # needs_planner_review -> ready
     state.log(f"{task.id} replanned: {guidance[:200]}")
@@ -136,3 +137,20 @@ def _run_request_locked(state, request, repo, approval, auto_review) -> None:
     nxt = state.next_runnable()
     if nxt:
         ui.info(f"Next runnable task: {nxt.id}")
+
+    _print_usage(state, plan.requirement_id)
+
+
+def _print_usage(state: StateManager, requirement_id: str | None) -> None:
+    from . import usage
+
+    entries = [e for e in state.board.usage if e.requirement_id == requirement_id]
+    if not entries:
+        return
+    total_in = sum(e.tokens_in for e in entries)
+    total_out = sum(e.tokens_out for e in entries)
+    cost = usage.estimate_cost(entries, state.config)
+    line = f"Est. tokens ~ {total_in + total_out:,} (in {total_in:,} / out {total_out:,})"
+    if cost is not None:
+        line += f" ~ ${cost}"
+    ui.info(line + "  [estimated]")

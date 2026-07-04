@@ -41,6 +41,9 @@ class ModelAdapter(ABC):
     """Backend-agnostic model interface. Concrete adapters wrap a provider."""
 
     name: str = "adapter"
+    # estimated token usage of the most recent call (set by concrete adapters)
+    last_tokens_in: int = 0
+    last_tokens_out: int = 0
 
     @abstractmethod
     def plan(self, request: str, repo: RepoContext) -> PlanResult: ...

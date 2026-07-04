@@ -1,4 +1,4 @@
-"""PLANTOD command-line interface (PRD 16)."""
+"""PLANTOD command-line interface."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ def _require_init(state: StateManager) -> None:
 
 @app.command()
 def init() -> None:
-    """Detect repo and scaffold .plantod/ (PRD 12.A, FR-01/02)."""
+    """Detect repo and scaffold .plantod/."""
     repo = scan_repo(".")
     if not repo.is_git:
         ui.warn("Current directory is not a git repo. Proceeding anyway.")
@@ -111,7 +111,7 @@ def login(
 
 @app.command()
 def status() -> None:
-    """Show board summary and current session (FR-06)."""
+    """Show board summary and current session."""
     state = _state()
     _require_init(state)
     counts: dict[str, int] = {}
@@ -135,7 +135,7 @@ def plan(
     review: bool = typer.Option(False, "--review", help="Run final review after tasks"),
     yes: bool = typer.Option(False, "--yes", "-y", help="Approve all gated tasks"),
 ) -> None:
-    """Plan a request, break into tasks, and run the default flow (FR-04/05)."""
+    """Plan a request, break into tasks, and run the default flow."""
     state = _state()
     _require_init(state)
     approval = (lambda _t: True) if yes else _prompt_approval
@@ -144,7 +144,7 @@ def plan(
 
 @app.command()
 def tasks() -> None:
-    """List tasks with status (FR-06)."""
+    """List tasks with status."""
     state = _state()
     _require_init(state)
     if not state.board.tasks:
@@ -155,7 +155,7 @@ def tasks() -> None:
 
 @app.command()
 def next() -> None:
-    """Show the next runnable task (PRD 12.D)."""
+    """Show the next runnable task."""
     state = _state()
     _require_init(state)
     task = state.next_runnable()
@@ -170,7 +170,7 @@ def run(
     task_id: str = typer.Argument(..., help="Task id, e.g. T001"),
     yes: bool = typer.Option(False, "--yes", "-y", help="Approve if gated"),
 ) -> None:
-    """Run one task through executor (FR-07/08)."""
+    """Run one task through executor."""
     from . import executor
 
     state = _state()
@@ -194,7 +194,7 @@ def run(
 
 @app.command()
 def review(requirement_id: str = typer.Argument(..., help="Requirement id, e.g. R001")) -> None:
-    """Final review for a requirement (FR-11)."""
+    """Final review for a requirement."""
     state = _state()
     _require_init(state)
     repo = scan_repo(state.root)
@@ -208,8 +208,33 @@ def review(requirement_id: str = typer.Argument(..., help="Requirement id, e.g. 
 
 
 @app.command()
+def usage() -> None:
+    """Estimated token usage (and cost, if prices configured) per provider."""
+    from . import usage as usage_mod
+
+    state = _state()
+    _require_init(state)
+    entries = state.board.usage
+    if not entries:
+        ui.info("No usage recorded yet.")
+        return
+    agg = usage_mod.summarize(entries)
+    table = ui.Table(title="Estimated usage (heuristic)")
+    table.add_column("Provider", style="bold")
+    table.add_column("Calls", justify="right")
+    table.add_column("Tokens in", justify="right")
+    table.add_column("Tokens out", justify="right")
+    for provider, a in sorted(agg.items()):
+        table.add_row(provider, str(a["calls"]), f"{a['in']:,}", f"{a['out']:,}")
+    ui.console.print(table)
+    total = sum(e.tokens_in + e.tokens_out for e in entries)
+    cost = usage_mod.estimate_cost(entries, state.config)
+    ui.info(f"Total ~ {total:,} tokens" + (f" ~ ${cost}" if cost is not None else " (set `prices` in config for cost)"))
+
+
+@app.command()
 def resume() -> None:
-    """Report where the last session left off (FR-12)."""
+    """Report where the last session left off."""
     state = _state()
     _require_init(state)
     s = state.session
@@ -227,7 +252,7 @@ def _prompt_approval(task) -> bool:
 
 @app.callback(invoke_without_command=True)
 def _main(ctx: typer.Context) -> None:
-    """Bare `plantod` opens the interactive session (PRD 11)."""
+    """Bare `plantod` opens the interactive session."""
     from .config import load_dotenv
 
     load_dotenv(".")
