@@ -25,13 +25,16 @@ from .base import ExecResult, ModelAdapter, PlanResult, ReviewResult
 @dataclass
 class ProviderSpec:
     binary: str
-    # build argv for a single non-interactive prompt
-    def argv(self, prompt: str, model: str | None) -> list[str]:  # pragma: no cover - overridden
+
+    # build argv for a single non-interactive prompt.
+    # `edit` = executor run that may modify files; read-only roles (plan/review)
+    # pass edit=False so the CLI stays in a non-editing mode where available.
+    def argv(self, prompt: str, model: str | None, edit: bool = False) -> list[str]:  # pragma: no cover
         raise NotImplementedError
 
 
 class _ClaudeCode(ProviderSpec):
-    def argv(self, prompt, model):
+    def argv(self, prompt, model, edit=False):
         args = [self.binary, "-p", prompt]
         if model:
             args += ["--model", model]
@@ -39,7 +42,7 @@ class _ClaudeCode(ProviderSpec):
 
 
 class _Codex(ProviderSpec):
-    def argv(self, prompt, model):
+    def argv(self, prompt, model, edit=False):
         args = [self.binary, "exec"]
         if model:
             args += ["--model", model]
@@ -47,8 +50,9 @@ class _Codex(ProviderSpec):
 
 
 class _OpenCode(ProviderSpec):
-    def argv(self, prompt, model):
-        args = [self.binary, "run"]
+    def argv(self, prompt, model, edit=False):
+        # opencode selects behavior via agents: `build` edits, `plan` is read-only
+        args = [self.binary, "run", "--agent", "build" if edit else "plan"]
         if model:
             args += ["--model", model]
         return args + [prompt]
@@ -128,7 +132,7 @@ class CliAgent(ModelAdapter):
         self.timeout_s = timeout_s
 
     # -- subprocess -------------------------------------------------------- #
-    def _run(self, prompt: str, root: Path) -> str:
+    def _run(self, prompt: str, root: Path, edit: bool = False) -> str:
         if shutil.which(self.spec.binary) is None:
             raise CliAgentError(
                 f"'{self.spec.binary}' CLI not found on PATH for provider '{self.name}'. "
@@ -136,7 +140,7 @@ class CliAgent(ModelAdapter):
             )
         try:
             proc = subprocess.run(
-                self.spec.argv(prompt, self.model),
+                self.spec.argv(prompt, self.model, edit),
                 cwd=root, capture_output=True, text=True, timeout=self.timeout_s,
             )
         except subprocess.TimeoutExpired as e:
@@ -173,7 +177,7 @@ class CliAgent(ModelAdapter):
             criteria="\n".join(f"- {c}" for c in task.acceptance_criteria),
         )
         try:
-            raw = self._run(prompt, repo.root)
+            raw = self._run(prompt, repo.root, edit=True)    # executor may modify files
         except CliAgentError as e:
             return ExecResult(escalate=True, escalate_reason=str(e), raw="")
         if "ESCALATE:" in raw:

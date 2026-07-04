@@ -10,7 +10,16 @@ def test_argv_shapes():
     assert CliAgent("claude-code", "opus").spec.argv("hi", "opus") == ["claude", "-p", "hi", "--model", "opus"]
     assert CliAgent("codex").spec.argv("hi", None) == ["codex", "exec", "hi"]
     assert CliAgent("codex", "o4").spec.argv("hi", "o4") == ["codex", "exec", "--model", "o4", "hi"]
-    assert CliAgent("opencode").spec.argv("hi", None) == ["opencode", "run", "hi"]
+    # opencode selects a read-only 'plan' agent by default
+    assert CliAgent("opencode").spec.argv("hi", None) == ["opencode", "run", "--agent", "plan", "hi"]
+
+
+def test_argv_opencode_edit_uses_build_agent():
+    # executor (edit=True) uses the build agent; read-only roles use plan
+    assert CliAgent("opencode", "m").spec.argv("hi", "m", edit=True) == [
+        "opencode", "run", "--agent", "build", "--model", "m", "hi"
+    ]
+    assert CliAgent("opencode").spec.argv("hi", None, edit=False)[3] == "plan"
 
 
 def test_unknown_provider():
