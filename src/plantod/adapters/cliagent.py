@@ -213,3 +213,33 @@ def provider_binary(provider: str) -> str | None:
     """Binary name for a provider, or None for mock/unknown."""
     spec = _SPECS.get(provider)
     return spec.binary if spec else None
+
+
+# Provider subcommands that print an available-model list, one per line.
+_MODEL_LIST_CMD: dict[str, list[str]] = {
+    "opencode": ["models"],
+    # claude-code / codex expose no reliable list command -> fall back to presets
+}
+
+
+def list_models(provider: str, timeout: int = 20) -> list[str]:
+    """Query the provider CLI for its available models. Empty list on any failure."""
+    spec = _SPECS.get(provider)
+    args = _MODEL_LIST_CMD.get(provider)
+    if not spec or not args or shutil.which(spec.binary) is None:
+        return []
+    try:
+        proc = subprocess.run(
+            [spec.binary, *args], capture_output=True, text=True, timeout=timeout
+        )
+    except (subprocess.SubprocessError, OSError):
+        return []
+    if proc.returncode != 0:
+        return []
+    seen, models = set(), []
+    for line in proc.stdout.splitlines():
+        m = line.strip()
+        if m and not m.startswith(("#", "-", "=")) and m not in seen:
+            seen.add(m)
+            models.append(m)
+    return models

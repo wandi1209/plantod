@@ -57,23 +57,34 @@ def init() -> None:
 
 _ROLES = ("planner", "executor", "reviewer")
 
-# suggested models per provider (providers accept any string; these are shortcuts)
+# fallback model shortcuts when a provider CLI can't be queried for a live list
 _MODEL_PRESETS = {
-    "claude-code": ["(default)", "claude-opus-4-8", "claude-sonnet-5", "claude-haiku-4-5", "custom…"],
-    "codex": ["(default)", "gpt-5-codex", "o4-mini", "custom…"],
-    "opencode": ["(default)", "deepseek-v3", "deepseek-r1", "custom…"],
+    "claude-code": ["claude-opus-4-8", "claude-sonnet-5", "claude-haiku-4-5"],
+    "codex": ["gpt-5-codex", "o4-mini"],
+    "opencode": ["deepseek-v3", "deepseek-r1"],
 }
 
 
 def _pick_model(provider: str, current: str | None) -> str | None:
     from . import menu
+    from .adapters.cliagent import list_models
 
-    presets = _MODEL_PRESETS.get(provider, ["(default)", "custom…"])
-    # surface the current value as a preset if it isn't already listed
-    if current and current not in presets:
-        presets = [current] + presets
+    if provider == "mock":
+        return None
+    # try to fetch the real model list from the provider CLI; else use presets
+    ui.info(f"  fetching models for {provider}…")
+    fetched = list_models(provider)
+    options = ["(default)"] + (fetched or _MODEL_PRESETS.get(provider, [])) + ["custom…"]
+    # de-dup while preserving order, and surface the current value
+    if current and current not in options:
+        options.insert(1, current)
+    seen, opts = set(), []
+    for o in options:
+        if o not in seen:
+            seen.add(o)
+            opts.append(o)
     default = current or "(default)"
-    choice = menu.select(f"  model for {provider}", presets, default=default)
+    choice = menu.select(f"  model for {provider}" + (f" ({len(fetched)} available)" if fetched else ""), opts, default=default)
     if choice == "(default)":
         return None
     if choice == "custom…":

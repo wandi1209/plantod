@@ -55,8 +55,10 @@ plantod login --role planner  --provider claude-code      # model optional -> pr
 plantod login ... --project                               # save to THIS repo instead of global
 ```
 
-The wizard is an inline **arrow-key menu** (↑/↓ + Enter): pick a provider, then a
-model from that provider's shortlist (or `(default)` / `custom…`). `plantod mode`
+The wizard is an inline **arrow-key menu** (↑/↓ + Enter, type to filter): pick a
+provider, then a model. Where the provider CLI can list its models (e.g.
+`opencode models`), PLANTOD **fetches the live list** so you never type an id by
+hand — otherwise it offers a shortlist plus `(default)` / `custom…`. `plantod mode`
 with no argument is selectable the same way.
 
 Config precedence (low → high): **defaults < global (`~/.config/plantod/config.yaml`) < project (`.plantod/config.yaml`)**.
