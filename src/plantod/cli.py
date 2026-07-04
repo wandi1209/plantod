@@ -57,6 +57,30 @@ def init() -> None:
 
 _ROLES = ("planner", "executor", "reviewer")
 
+# suggested models per provider (providers accept any string; these are shortcuts)
+_MODEL_PRESETS = {
+    "claude-code": ["(default)", "claude-opus-4-8", "claude-sonnet-5", "claude-haiku-4-5", "custom…"],
+    "codex": ["(default)", "gpt-5-codex", "o4-mini", "custom…"],
+    "opencode": ["(default)", "deepseek-v3", "deepseek-r1", "custom…"],
+}
+
+
+def _pick_model(provider: str, current: str | None) -> str | None:
+    from . import menu
+
+    presets = _MODEL_PRESETS.get(provider, ["(default)", "custom…"])
+    # surface the current value as a preset if it isn't already listed
+    if current and current not in presets:
+        presets = [current] + presets
+    default = current or "(default)"
+    choice = menu.select(f"  model for {provider}", presets, default=default)
+    if choice == "(default)":
+        return None
+    if choice == "custom…":
+        val = typer.prompt("  model id").strip()
+        return val or None
+    return choice
+
 
 def _verify_provider(provider: str) -> None:
     if provider == "mock":
@@ -93,18 +117,20 @@ def login(
         ui.ok(f"{role}: {provider}" + (f" ({model})" if model else "") + f" -> {scope_path}")
         return
 
-    # interactive wizard
+    # interactive wizard — arrow-key selection
+    from . import menu
+
     ui.info(f"Configuring providers ({'project' if project else 'global'}: {scope_path})")
     current = StateManager(".").config if project else load_global_config()
     for r in _ROLES:
         cur = getattr(current, r)
         ui.console.print(f"\n[bold]{r}[/bold] (current: {cur.provider}{f'/{cur.model}' if cur.model else ''})")
-        chosen = typer.prompt(f"  provider {list(PROVIDERS)}", default=cur.provider)
-        while chosen not in PROVIDERS:
-            ui.error(f"  pick one of {', '.join(PROVIDERS)}")
-            chosen = typer.prompt("  provider", default=cur.provider)
-        mdl = typer.prompt("  model (blank = provider default)", default=cur.model or "", show_default=False)
-        mdl = mdl.strip() or None
+        try:
+            chosen = menu.select(f"  provider for {r}", list(PROVIDERS), default=cur.provider)
+            mdl = _pick_model(chosen, cur.model)
+        except KeyboardInterrupt:
+            ui.warn("Cancelled.")
+            return
         update_role_backend(scope_path, r, chosen, mdl)
         _verify_provider(chosen)
     ui.ok(f"Saved provider config -> {scope_path}")
@@ -118,8 +144,18 @@ def mode(
     """Set run mode: `auto` (unattended) or `approval` (gate risky tasks)."""
     state = _state()
     if value is None:
+        from . import menu
+
         ui.info(f"Current mode: {state.config.mode}")
-        return
+        try:
+            value = menu.select(
+                "Run mode",
+                [("approval — gate risky tasks", "approval"), ("auto — unattended to done", "auto")],
+                default=state.config.mode,
+            )
+        except KeyboardInterrupt:
+            ui.warn("Cancelled.")
+            return
     if value not in ("auto", "approval"):
         ui.error("mode must be 'auto' or 'approval'")
         raise typer.Exit(1)

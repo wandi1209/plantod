@@ -49,11 +49,15 @@ CLI(s) for the providers you pick; each handles its own auth/model config.
 Set the provider + model for each role (planner / executor / reviewer):
 
 ```bash
-plantod login                                             # interactive wizard (all roles)
+plantod login                                             # arrow-key wizard (provider + model per role)
 plantod login --role executor --provider codex --model o4 # non-interactive, one role
 plantod login --role planner  --provider claude-code      # model optional -> provider default
 plantod login ... --project                               # save to THIS repo instead of global
 ```
+
+The wizard is an inline **arrow-key menu** (↑/↓ + Enter): pick a provider, then a
+model from that provider's shortlist (or `(default)` / `custom…`). `plantod mode`
+with no argument is selectable the same way.
 
 Config precedence (low → high): **defaults < global (`~/.config/plantod/config.yaml`) < project (`.plantod/config.yaml`)**.
 `login` writes the global scope by default so settings carry across repos (NFR-02);
