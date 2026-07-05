@@ -51,16 +51,28 @@ def write_doc(path: Path, frontmatter: dict[str, Any], body: str) -> Path:
 
 
 def read_doc(path: Path) -> tuple[dict[str, Any], str]:
-    """Return (frontmatter, body). Tolerates docs without frontmatter."""
+    """Return (frontmatter, body). Tolerant: never raises on malformed content.
+
+    The closing delimiter is matched only as a line that is exactly ``---`` at
+    column 0, so a ``---`` appearing inside a frontmatter value (e.g. a model's
+    multi-line summary) does not truncate the parse.
+    """
     text = path.read_text(encoding="utf-8")
-    if not text.startswith(_FRONTMATTER_DELIM):
+    lines = text.split("\n")
+    if not lines or lines[0].rstrip("\r") != _FRONTMATTER_DELIM:
         return {}, text
-    parts = text.split(_FRONTMATTER_DELIM, 2)
-    # parts == ["", "<yaml>", "<body>"]
-    if len(parts) < 3:
+    end = next((i for i in range(1, len(lines)) if lines[i].rstrip("\r") == _FRONTMATTER_DELIM), None)
+    if end is None:
         return {}, text
-    frontmatter = yaml.safe_load(parts[1]) or {}
-    return frontmatter, parts[2].lstrip("\n")
+    fm_text = "\n".join(lines[1:end])
+    body = "\n".join(lines[end + 1:]).lstrip("\n")
+    try:
+        frontmatter = yaml.safe_load(fm_text) or {}
+    except yaml.YAMLError:
+        return {}, text
+    if not isinstance(frontmatter, dict):
+        return {}, text
+    return frontmatter, body
 
 
 # --------------------------------------------------------------------------- #

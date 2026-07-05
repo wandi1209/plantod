@@ -18,6 +18,26 @@ def test_read_doc_without_frontmatter(tmp_path):
     assert body == "no frontmatter here"
 
 
+def test_frontmatter_value_containing_dashes(tmp_path):
+    # a model summary with a literal '---' line must not truncate the parse
+    p = tmp_path / "h.md"
+    summary = "Let me check the images\n---\nthen build the layout"
+    write_doc(p, {"task_id": "T003", "summary_of_changes": summary}, "# body\n---\nmore")
+    fm, body = read_doc(p)
+    assert fm["task_id"] == "T003"
+    assert fm["summary_of_changes"] == summary
+    assert "more" in body
+
+
+def test_read_doc_malformed_frontmatter_is_tolerant(tmp_path):
+    # unterminated quote in frontmatter -> return {} + full text, never raise
+    p = tmp_path / "bad.md"
+    p.write_text("---\nsummary: 'unterminated\nstill going\n---\nbody\n", encoding="utf-8")
+    fm, body = read_doc(p)
+    assert fm == {}
+    assert "unterminated" in body
+
+
 def test_json_roundtrip(tmp_path):
     p = tmp_path / "board.json"
     write_json(p, {"x": 1, "nested": {"y": [1, 2]}})
