@@ -27,6 +27,21 @@ _SLASH = {
 _BANNER = "PLANTOD — Plan, Task, Orchestrate, Deliver.  Type a request, or /help."
 
 
+def _print_banner(state: StateManager) -> None:
+    from rich.panel import Panel
+    from rich.text import Text
+
+    c = state.config
+    body = Text()
+    body.append("PLANTOD\n", style="bold cyan")
+    body.append("Plan · Task · Orchestrate · Deliver\n\n", style="dim")
+    body.append("mode ", style="dim")
+    body.append(c.mode, style="bold magenta" if c.mode == "auto" else "bold green")
+    body.append("   providers ", style="dim")
+    body.append(f"{c.planner.provider} → {c.executor.provider} → {c.reviewer.provider}", style="cyan")
+    ui.console.print(Panel(body, border_style="cyan", expand=False, padding=(0, 2)))
+
+
 def repl() -> None:
     state = StateManager(".")
     if not state.is_initialized():
@@ -35,7 +50,7 @@ def repl() -> None:
             return
         state = StateManager(".")   # reload after init
 
-    ui.console.print(f"[bold cyan]{_BANNER}[/bold cyan]")
+    _print_banner(state)
 
     # provider readiness + first-run guidance
     from . import preflight
@@ -96,6 +111,7 @@ def _make_prompt(state: StateManager):
         from prompt_toolkit import PromptSession
         from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
         from prompt_toolkit.completion import WordCompleter
+        from prompt_toolkit.formatted_text import HTML
         from prompt_toolkit.history import FileHistory
     except ImportError:
         return lambda: input("plantod> ")
@@ -107,7 +123,18 @@ def _make_prompt(state: StateManager):
         auto_suggest=AutoSuggestFromHistory(),
         completer=WordCompleter(list(_SLASH), sentence=True),
     )
-    return lambda: session.prompt("plantod › ")
+
+    def ask() -> str:
+        mode = state.config.mode
+        mcolor = "ansimagenta" if mode == "auto" else "ansigreen"
+        message = HTML(
+            f'<b><ansicyan>plantod</ansicyan></b> '
+            f'<{mcolor}>({mode})</{mcolor}> '
+            f'<ansibrightblack>›</ansibrightblack> '
+        )
+        return session.prompt(message)
+
+    return ask
 
 
 # --------------------------------------------------------------------------- #
@@ -169,6 +196,7 @@ def _handle_slash(state: StateManager, repo, line: str) -> bool:
 
 
 def _handle_request(state: StateManager, repo, line: str) -> None:
+    ui.console.rule(style="dim cyan")
     context = conversation.build_context(state)   # prior turns only
     conversation.record(state, "user", line)
     orchestrator.run_request(state, line, repo=repo, approval=_confirm, context=context)
