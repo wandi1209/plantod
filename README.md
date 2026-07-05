@@ -42,7 +42,8 @@ CLI(s) for the providers you pick; each handles its own auth/model config.
 |----------|--------|-----------|
 | `claude-code` | `claude` | `claude -p "<prompt>"` |
 | `codex` | `codex` | `codex exec "<prompt>"` |
-| `opencode` | `opencode` | `opencode run "<prompt>"` |
+| `opencode` | `opencode` | `opencode run "<prompt>"` (models: `opencode/*`) |
+| `opencode-go` | `opencode` | same binary, restricted to `opencode-go/*` models/endpoint |
 
 ### `plantod login`
 

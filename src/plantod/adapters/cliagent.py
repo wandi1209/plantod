@@ -64,6 +64,8 @@ _SPECS: dict[str, ProviderSpec] = {
     "claude-code": _ClaudeCode(binary="claude"),
     "codex": _Codex(binary="codex"),
     "opencode": _OpenCode(binary="opencode"),
+    # same binary as opencode; distinguished only by its model prefix/endpoint
+    "opencode-go": _OpenCode(binary="opencode"),
 }
 
 _READONLY = "Do NOT modify, create, or delete any files. Only print the requested output."
@@ -233,22 +235,27 @@ def provider_binary(provider: str) -> str | None:
     return spec.binary if spec else None
 
 
-# Provider subcommands that print an available-model list, one per line.
-_MODEL_LIST_CMD: dict[str, list[str]] = {
-    "opencode": ["models"],
+# Providers that can list models via `opencode models`, with the model-id prefix
+# each one is restricted to (so opencode-go only shows opencode-go/* models).
+_MODEL_LIST_PREFIX: dict[str, str] = {
+    "opencode": "opencode/",
+    "opencode-go": "opencode-go/",
     # claude-code / codex expose no reliable list command -> fall back to presets
 }
 
 
 def list_models(provider: str, timeout: int = 20) -> list[str]:
-    """Query the provider CLI for its available models. Empty list on any failure."""
-    spec = _SPECS.get(provider)
-    args = _MODEL_LIST_CMD.get(provider)
-    if not spec or not args or shutil.which(spec.binary) is None:
+    """Query `opencode models`, filtered to the provider's own model prefix.
+
+    Empty list on any failure. opencode-go returns only opencode-go/* models so a
+    user on that account is never shown models they can't call.
+    """
+    prefix = _MODEL_LIST_PREFIX.get(provider)
+    if prefix is None or shutil.which("opencode") is None:
         return []
     try:
         proc = subprocess.run(
-            [spec.binary, *args], capture_output=True, text=True, timeout=timeout
+            ["opencode", "models"], capture_output=True, text=True, timeout=timeout
         )
     except (subprocess.SubprocessError, OSError):
         return []
@@ -257,7 +264,7 @@ def list_models(provider: str, timeout: int = 20) -> list[str]:
     seen, models = set(), []
     for line in proc.stdout.splitlines():
         m = line.strip()
-        if m and not m.startswith(("#", "-", "=")) and m not in seen:
+        if m.startswith(prefix) and m not in seen:
             seen.add(m)
             models.append(m)
     return models

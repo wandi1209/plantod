@@ -39,7 +39,14 @@ def test_provider_binary():
     assert provider_binary("claude-code") == "claude"
     assert provider_binary("codex") == "codex"
     assert provider_binary("opencode") == "opencode"
+    assert provider_binary("opencode-go") == "opencode"   # same binary
     assert provider_binary("mock") is None
+
+
+def test_opencode_go_uses_opencode_binary():
+    a = CliAgent("opencode-go", "opencode-go/kimi-k2.7-code")
+    assert a.spec.binary == "opencode"
+    assert a.spec.argv("hi", "opencode-go/kimi-k2.7-code")[:2] == ["opencode", "run"]
 
 
 def test_registry_resolves_cliagent():

@@ -103,8 +103,9 @@ def next_status(current: TaskStatus, event: TaskEvent) -> TaskStatus:
 # Config (PRD 19.1)
 # --------------------------------------------------------------------------- #
 # User-selectable backend providers (agentic CLIs, driven headless).
-# ("mock" exists as an internal test double but is not offered to users.)
-PROVIDERS = ("claude-code", "codex", "opencode")
+# opencode and opencode-go share the `opencode` binary but expose different model
+# sets/endpoints. ("mock" is an internal test double, not offered to users.)
+PROVIDERS = ("claude-code", "codex", "opencode", "opencode-go")
 
 
 class RoleBackend(BaseModel):
