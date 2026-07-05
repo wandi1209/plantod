@@ -118,7 +118,8 @@ plantod › now add a test for it        # remembers the previous turn
 plantod › /tasks                       # slash commands for everything
 ```
 
-Slash commands: `/help /status /tasks /usage /review <RID> /resume /clear /quit`.
+Slash commands: `/help /login /mode /status /tasks /usage /review <RID> /resume /clear /quit`.
+First run offers to `init` for you and checks your provider CLIs are installed.
 Conversation persists in `.plantod/session.json` (last 40 turns); `/clear` resets it.
 
 ## Why planning-first saves tokens (cost model)

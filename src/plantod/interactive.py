@@ -13,6 +13,8 @@ from .state import StateManager
 
 _SLASH = {
     "/help": "show this help",
+    "/login": "configure providers (arrow-key wizard)",
+    "/mode": "switch auto / approval mode",
     "/status": "board summary",
     "/tasks": "list tasks",
     "/usage": "estimated token usage",
@@ -28,11 +30,24 @@ _BANNER = "PLANTOD — Plan, Task, Orchestrate, Deliver.  Type a request, or /he
 def repl() -> None:
     state = StateManager(".")
     if not state.is_initialized():
-        ui.warn("Not initialized. Run `plantod init` first.")
-        return
+        if not _offer_init(state):
+            ui.info("Run `plantod init` when you're ready.")
+            return
+        state = StateManager(".")   # reload after init
 
     ui.console.print(f"[bold cyan]{_BANNER}[/bold cyan]")
-    if state.session.turns:
+
+    # provider readiness + first-run guidance
+    from . import preflight
+
+    miss = preflight.missing(state.config)
+    if miss:
+        names = ", ".join(f"{m['role']}={m['provider']}({m['binary']})" for m in miss)
+        ui.warn(f"Provider CLI missing: {names}")
+        ui.info("Type /login to configure, or install the CLI.")
+    if not state.session.turns:
+        ui.info("Getting started: /login to set providers, then just type a request. /help for commands.")
+    else:
         ui.info(f"Resumed session — {len(state.session.turns)} prior turn(s). /clear to reset.")
     repo = scan_repo(state.root)
     ask = _make_prompt(state)
@@ -51,6 +66,21 @@ def repl() -> None:
         if _handle_slash(state, repo, line):
             continue
         _handle_request(state, repo, line)
+
+
+def _offer_init(state: StateManager) -> bool:
+    """Prompt to initialize .plantod/ in the current directory."""
+    try:
+        ans = input("No .plantod here. Initialize in this directory? [Y/n] ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        return False
+    if ans not in ("", "y", "yes"):
+        return False
+    if not scan_repo(".").is_git:
+        ui.warn("Not a git repo — the scope guard needs git. Proceeding anyway.")
+    state.initialize()
+    ui.ok(f"Initialized {state.artifact_dir}")
+    return True
 
 
 # --------------------------------------------------------------------------- #
@@ -93,6 +123,18 @@ def _handle_slash(state: StateManager, repo, line: str) -> bool:
     if cmd == "/help":
         for name, desc in _SLASH.items():
             ui.console.print(f"  [bold]{name}[/bold]  {desc}")
+    elif cmd == "/login":
+        from . import cli
+        from .config import load_config
+
+        cli.login(role=None, provider=None, model=None, project=False)
+        state.config = load_config(state.artifact_dir)   # refresh running config
+    elif cmd == "/mode":
+        from . import cli
+        from .config import load_config
+
+        cli.mode(value=arg or None, project=False)
+        state.config = load_config(state.artifact_dir)
     elif cmd == "/status":
         _status(state)
     elif cmd == "/tasks":

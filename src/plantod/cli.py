@@ -52,7 +52,21 @@ def init() -> None:
     c = state.config
     ui.info(f"Mode: {c.mode} | Providers — planner: {c.planner.provider} | executor: {c.executor.provider} | reviewer: {c.reviewer.provider}")
     ui.info(f"Detected test command: {repo.test_command or 'none'}")
-    ui.info("Set providers with `plantod login`, run mode with `plantod mode auto`.")
+    _report_preflight(state)
+    ui.info("Next: `plantod login` to set providers, then `plantod plan \"<request>\"`.")
+
+
+def _report_preflight(state: StateManager) -> None:
+    """Warn about any configured provider whose CLI isn't installed."""
+    from . import preflight
+
+    miss = preflight.missing(state.config)
+    if not miss:
+        ui.ok("All configured provider CLIs found.")
+        return
+    for m in miss:
+        ui.warn(f"{m['role']} provider '{m['provider']}' needs the `{m['binary']}` CLI (not on PATH).")
+    ui.info("Install the missing CLI(s), or pick another with `plantod login`.")
 
 
 _ROLES = ("planner", "executor", "reviewer")
