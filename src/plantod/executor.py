@@ -14,6 +14,24 @@ from .schemas import Handoff, Role, Task, TaskEvent
 from .testrunner import run_tests
 
 
+def _diff_rejected(state, task: Task, repo: RepoContext, files_changed: list[str]) -> bool:
+    """Show the diff and ask to apply, when apply_requires_approval is on (interactive only)."""
+    import sys
+
+    if not (state.config.apply_requires_approval and files_changed):
+        return False
+    if not gitutil.is_git_repo(repo.root) or not sys.stdin.isatty():
+        return False
+    from . import ui
+
+    diff = gitutil.diff(repo.root, files_changed)
+    ui.info(f"{task.id} changed {len(files_changed)} file(s): {', '.join(files_changed)}")
+    if diff.strip():
+        ui.console.print(diff[:4000])
+    ans = input(f"Apply these changes for {task.id}? [Y/n] ").strip().lower()
+    return ans not in ("", "y", "yes")
+
+
 def _escalate(state, task: Task, adapter_name: str, files, summary: str, reason: str) -> Handoff:
     task.escalation_count += 1
     state.advance(task.id, TaskEvent.block)
@@ -69,6 +87,11 @@ def run_task(state, task: Task, repo: RepoContext) -> Handoff:
         if not report.clean:
             reason = f"out-of-scope edits reverted: {report.reverted or report.violations}"
             return _escalate(state, task, adapter.label, report.in_scope, result.summary, reason)
+
+    # --- diff preview / apply approval (PRD 17) --------------------------- #
+    if _diff_rejected(state, task, repo, files_changed):
+        gitutil.revert(repo.root, files_changed)
+        return _escalate(state, task, adapter.label, [], result.summary, "user rejected the diff")
 
     # --- testing phase ---------------------------------------------------- #
     state.advance(task.id, TaskEvent.submit_test)     # -> testing

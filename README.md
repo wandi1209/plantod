@@ -208,6 +208,12 @@ work, which is where "just let the big model code" runs burn tokens on churn.
 | `exec_timeout_s` / `test_timeout_s` | 900 / 600 | subprocess timeouts |
 | `max_retries` | 3 | retry transient backend failures / cap replans |
 | `auto_replan_on_escalation` | true | planner advises + retries an escalated task |
+| `max_tasks_per_run` | 20 | stop after N tasks; `plantod resume` continues (0 = unlimited) |
+| `max_tokens_budget` | 0 | stop when estimated tokens exceed budget (0 = unlimited) |
+| `apply_requires_approval` | false | show the diff and ask before keeping executor edits |
+
+`plantod resume` continues where a run stopped — it unblocks escalated tasks
+(planner re-plan) and runs the remaining ready tasks to done.
 
 ## Production notes
 

@@ -132,6 +132,9 @@ class Config(BaseModel):
     test_timeout_s: int = 600
     max_retries: int = 3
     auto_replan_on_escalation: bool = True
+    # guards against runaway automation (0 = unlimited)
+    max_tasks_per_run: int = 20
+    max_tokens_budget: int = 0
     # optional cost estimate: provider -> [usd_per_1M_input, usd_per_1M_output]
     prices: dict[str, list[float]] = Field(default_factory=dict)
 

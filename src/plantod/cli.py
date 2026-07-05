@@ -327,17 +327,16 @@ def usage() -> None:
 
 
 @app.command()
-def resume() -> None:
-    """Report where the last session left off."""
+def resume(
+    yes: bool = typer.Option(False, "--yes", "-y", help="Approve all gated tasks"),
+) -> None:
+    """Continue the current requirement: unblock escalations and run remaining tasks."""
     state = _state()
     _require_init(state)
     s = state.session
     ui.info(f"Requirement: {s.current_requirement_id or '-'} | Plan: {s.current_plan_id or '-'} | Last task: {s.last_task_id or '-'}")
-    nxt = state.next_runnable()
-    if nxt:
-        ui.info(f"Next runnable: {nxt.id} — {nxt.title}")
-    else:
-        ui.info("No runnable task pending.")
+    approval = (lambda _t: True) if yes else _prompt_approval
+    orchestrator.resume(state, approval=approval)
 
 
 def _prompt_approval(task) -> bool:

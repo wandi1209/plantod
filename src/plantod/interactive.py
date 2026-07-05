@@ -179,11 +179,7 @@ def _handle_slash(state: StateManager, repo, line: str) -> bool:
         state.save()
         ui.ok("Conversation memory cleared.")
     elif cmd == "/resume":
-        s = state.session
-        ui.info(f"Requirement: {s.current_requirement_id or '-'} | Last task: {s.last_task_id or '-'}")
-        nxt = state.next_runnable()
-        if nxt:
-            ui.info(f"Next runnable: {nxt.id} — {nxt.title}")
+        orchestrator.resume(state, repo=repo, approval=_confirm)
     elif cmd == "/review":
         if not arg:
             ui.error("Usage: /review <requirement-id>")

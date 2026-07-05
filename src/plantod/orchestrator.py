@@ -117,9 +117,33 @@ def _run_request_locked(state, request, repo, approval, auto_review, context="")
         state.advance(task.id, TaskEvent.activate)   # pending -> ready
     state.save()
 
+    _drive_tasks(state, repo, approval, plan.requirement_id, auto_review)
+
+
+def _over_budget(state: StateManager, requirement_id: str | None) -> bool:
+    budget = state.config.max_tokens_budget
+    if budget <= 0:
+        return False
+    used = sum(e.tokens_in + e.tokens_out for e in state.board.usage
+               if e.requirement_id == requirement_id)
+    return used >= budget
+
+
+def _drive_tasks(state, repo, approval, requirement_id, auto_review) -> None:
+    """Run runnable tasks to completion, honoring gates, budget, and escalation."""
+    approval = approval or _default_approval
+    executed = 0
     while (task := state.next_runnable()) is not None:
-        gated = should_auto_run(task, state.config)
-        if gated:
+        if state.config.max_tasks_per_run and executed >= state.config.max_tasks_per_run:
+            ui.warn(f"Reached max_tasks_per_run ({state.config.max_tasks_per_run}). "
+                    f"Run `plantod resume` to continue.")
+            break
+        if _over_budget(state, requirement_id):
+            ui.warn(f"Token budget ({state.config.max_tokens_budget:,}) reached. Stopping. "
+                    f"Raise `max_tokens_budget` or run `plantod resume`.")
+            break
+
+        if should_auto_run(task, state.config):
             ui.info(f"Auto-running {task.id} ({task.risk_level.value}): {task.title}")
         else:
             ui.warn(f"Approval needed for {task.id} ({task.risk_level.value}): {task.title}")
@@ -128,6 +152,7 @@ def _run_request_locked(state, request, repo, approval, auto_review, context="")
                 break
 
         handoff = executor.run_task(state, task, repo)
+        executed += 1
         hp = state.artifact_dir / "handoffs" / f"{task.id}.md"
         current = state.get_task(task.id)
         if current.status is TaskStatus.needs_planner_review:
@@ -139,16 +164,38 @@ def _run_request_locked(state, request, repo, approval, auto_review, context="")
             break
         ui.ok(f"{task.id} -> {current.status.value}. Handoff: {hp}")
 
-    if auto_review and plan.requirement_id:
-        review = reviewer.review_requirement(state, plan.requirement_id, repo)
-        rp = state.artifact_dir / "reviews" / f"{review.id}.md"
-        ui.ok(f"Review ({review.verdict}): {rp}")
+    if auto_review and requirement_id:
+        try:
+            review = reviewer.review_requirement(state, requirement_id, repo)
+            rp = state.artifact_dir / "reviews" / f"{review.id}.md"
+            ui.ok(f"Review ({review.verdict}): {rp}")
+        except Exception as exc:
+            ui.error(f"Review failed: {exc}")
 
     nxt = state.next_runnable()
     if nxt:
         ui.info(f"Next runnable task: {nxt.id}")
+    _print_usage(state, requirement_id)
 
-    _print_usage(state, plan.requirement_id)
+
+def resume(state: StateManager, repo: RepoContext | None = None,
+           approval: ApprovalFn | None = None) -> None:
+    """Continue the current requirement: unblock escalations, run remaining tasks."""
+    try:
+        with project_lock(state.artifact_dir):
+            repo = repo or scan_repo(state.root)
+            rid = state.session.current_requirement_id
+            # try to unblock any escalated tasks first
+            for task in list(state.board.tasks.values()):
+                if task.status is TaskStatus.needs_planner_review:
+                    if _try_replan(state, task, repo):
+                        ui.info(f"Unblocked {task.id}.")
+            if state.next_runnable() is None:
+                ui.info("Nothing runnable — all tasks done or awaiting review.")
+            auto_review = state.config.mode == "auto"
+            _drive_tasks(state, repo, approval, rid, auto_review)
+    except LockBusy as e:
+        ui.error(str(e))
 
 
 def _print_usage(state: StateManager, requirement_id: str | None) -> None:
