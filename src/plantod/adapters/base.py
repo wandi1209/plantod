@@ -45,6 +45,11 @@ class ModelAdapter(ABC):
     last_tokens_in: int = 0
     last_tokens_out: int = 0
 
+    @property
+    def label(self) -> str:
+        """Human-readable provider (+ model) for logs and UI."""
+        return self.name
+
     @abstractmethod
     def plan(self, request: str, repo: RepoContext) -> PlanResult: ...
 

@@ -65,7 +65,7 @@ def make_plan(
     augmented = request if not context else (
         f"Conversation so far:\n{context}\n\nNew request: {request}"
     )
-    with ui.status(f"Planning with {adapter.name}…"):
+    with ui.status(f"Planning with {adapter.label}…"):
         result = with_retries(lambda: adapter.plan(augmented, repo), attempts=state.config.max_retries)
     state.record_usage("planner", adapter, req_id)
 

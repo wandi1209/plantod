@@ -65,7 +65,7 @@ def _try_replan(state: StateManager, task: Task, repo: RepoContext) -> bool:
         fm, _ = read_doc(hp)
         reason = str(fm.get("risks_notes", ""))
     try:
-        with ui.status(f"Re-planning {task.id} with {planner_adapter.name}…"):
+        with ui.status(f"Re-planning {task.id} with {planner_adapter.label}…"):
             guidance = planner_adapter.advise(task, reason, repo)
     except Exception as exc:  # planner unavailable -> leave escalated
         state.log(f"{task.id} replan failed: {exc}")

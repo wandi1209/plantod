@@ -31,6 +31,15 @@ def _state() -> StateManager:
     return StateManager(".")
 
 
+def _fmt_backend(b) -> str:
+    return b.provider + (f" ({b.model})" if b.model else "")
+
+
+def _providers_line(c) -> str:
+    return (f"planner: {_fmt_backend(c.planner)} | executor: {_fmt_backend(c.executor)} | "
+            f"reviewer: {_fmt_backend(c.reviewer)}")
+
+
 def _require_init(state: StateManager) -> None:
     if not state.is_initialized():
         ui.error("Not initialized. Run `plantod init` first.")
@@ -50,7 +59,7 @@ def init() -> None:
     state.initialize()
     ui.ok(f"Initialized {state.artifact_dir}")
     c = state.config
-    ui.info(f"Mode: {c.mode} | Providers — planner: {c.planner.provider} | executor: {c.executor.provider} | reviewer: {c.reviewer.provider}")
+    ui.info(f"Mode: {c.mode} | {_providers_line(c)}")
     ui.info(f"Detected test command: {repo.test_command or 'none'}")
     _report_preflight(state)
     ui.info("Next: `plantod login` to set providers, then `plantod plan \"<request>\"`.")
@@ -200,7 +209,7 @@ def status() -> None:
     for t in state.board.tasks.values():
         counts[t.status.value] = counts.get(t.status.value, 0) + 1
     c = state.config
-    ui.info(f"Mode: {c.mode} | Providers — planner: {c.planner.provider} | executor: {c.executor.provider} | reviewer: {c.reviewer.provider}")
+    ui.info(f"Mode: {c.mode} | {_providers_line(c)}")
     ui.info(f"Requirements: {len(state.board.requirements)} | Plans: {len(state.board.plans)} | Tasks: {len(state.board.tasks)}")
     for status_name, n in sorted(counts.items()):
         ui.info(f"  {status_name}: {n}")

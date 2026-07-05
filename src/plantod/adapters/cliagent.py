@@ -135,6 +135,10 @@ class CliAgent(ModelAdapter):
         self.model = model
         self.timeout_s = timeout_s
 
+    @property
+    def label(self) -> str:
+        return f"{self.name} · {self.model}" if self.model else f"{self.name} (default model)"
+
     # -- subprocess -------------------------------------------------------- #
     def _run(self, prompt: str, root: Path, edit: bool = False) -> str:
         if shutil.which(self.spec.binary) is None:

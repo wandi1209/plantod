@@ -35,7 +35,7 @@ def review_requirement(state: StateManager, requirement_id: str, repo: RepoConte
 
     from . import ui
 
-    with ui.status(f"Reviewing with {adapter.name}…"):
+    with ui.status(f"Reviewing with {adapter.label}…"):
         result = with_retries(
             lambda: adapter.review(req.request, handoffs, repo),
             attempts=state.config.max_retries,

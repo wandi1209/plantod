@@ -44,19 +44,19 @@ def run_task(state, task: Task, repo: RepoContext) -> Handoff:
     from . import ui
 
     try:
-        with ui.status(f"{task.id}: executing with {adapter.name}…"):
+        with ui.status(f"{task.id}: executing with {adapter.label}…"):
             result = with_retries(
                 lambda: adapter.execute(task, repo),
                 attempts=state.config.max_retries,
                 on_retry=lambda n, e: state.log(f"{task.id} execute retry {n}: {e}"),
             )
     except Exception as exc:  # backend failed hard after retries
-        return _escalate(state, task, adapter.name, [], "", f"executor error: {exc}")
+        return _escalate(state, task, adapter.label, [], "", f"executor error: {exc}")
 
     state.record_usage("executor", adapter, task.requirement_id)
 
     if result.escalate:
-        return _escalate(state, task, adapter.name, result.files_changed, result.summary, result.escalate_reason)
+        return _escalate(state, task, adapter.label, result.files_changed, result.summary, result.escalate_reason)
 
     # --- hard scope enforcement (PRD 12.E) -------------------------------- #
     files_changed = result.files_changed
@@ -68,7 +68,7 @@ def run_task(state, task: Task, repo: RepoContext) -> Handoff:
         files_changed = report.in_scope
         if not report.clean:
             reason = f"out-of-scope edits reverted: {report.reverted or report.violations}"
-            return _escalate(state, task, adapter.name, report.in_scope, result.summary, reason)
+            return _escalate(state, task, adapter.label, report.in_scope, result.summary, reason)
 
     # --- testing phase ---------------------------------------------------- #
     state.advance(task.id, TaskEvent.submit_test)     # -> testing
@@ -85,7 +85,7 @@ def run_task(state, task: Task, repo: RepoContext) -> Handoff:
     handoff = Handoff(
         task_id=task.id,
         status=task.status.value,
-        model_used=adapter.name,
+        model_used=adapter.label,
         files_changed=files_changed,
         summary_of_changes=result.summary,
         tests_run=test.command,

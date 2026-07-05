@@ -36,9 +36,12 @@ def _print_banner(state: StateManager) -> None:
     body.append("PLANTOD\n", style="bold cyan")
     body.append("Plan · Task · Orchestrate · Deliver\n\n", style="dim")
     body.append("mode ", style="dim")
-    body.append(c.mode, style="bold magenta" if c.mode == "auto" else "bold green")
-    body.append("   providers ", style="dim")
-    body.append(f"{c.planner.provider} → {c.executor.provider} → {c.reviewer.provider}", style="cyan")
+    body.append(f"{c.mode}\n", style="bold magenta" if c.mode == "auto" else "bold green")
+    for role in ("planner", "executor", "reviewer"):
+        b = getattr(c, role)
+        body.append(f"{role:<9}", style="dim")
+        body.append(b.provider, style="cyan")
+        body.append(f"  {b.model or 'default model'}\n", style="green" if b.model else "dim")
     ui.console.print(Panel(body, border_style="cyan", expand=False, padding=(0, 2)))
 
 
@@ -217,8 +220,10 @@ def _status(state: StateManager) -> None:
     counts: dict[str, int] = {}
     for t in state.board.tasks.values():
         counts[t.status.value] = counts.get(t.status.value, 0) + 1
+    from .cli import _providers_line
+
     c = state.config
-    ui.info(f"Mode: {c.mode} | Providers — planner: {c.planner.provider} | executor: {c.executor.provider} | reviewer: {c.reviewer.provider}")
+    ui.info(f"Mode: {c.mode} | {_providers_line(c)}")
     ui.info(
         f"Requirements: {len(state.board.requirements)} | Tasks: {len(state.board.tasks)} | "
         + ", ".join(f"{k}={v}" for k, v in sorted(counts.items()))
