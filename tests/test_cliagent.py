@@ -27,6 +27,14 @@ def test_unknown_provider():
         CliAgent("gpt-9000")
 
 
+def test_friendly_errors():
+    a = CliAgent("opencode")
+    assert "credit" in a._friendly_error(1, "AI_APICallError: Insufficient balance").lower()
+    assert "auth login" in a._friendly_error(1, "Error: Unauthorized")
+    assert "rate limit" in a._friendly_error(1, "429 Too Many Requests").lower()
+    assert "exited 2" in a._friendly_error(2, "some other failure")
+
+
 def test_provider_binary():
     assert provider_binary("claude-code") == "claude"
     assert provider_binary("codex") == "codex"

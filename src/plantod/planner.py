@@ -60,10 +60,13 @@ def make_plan(
 
     from .retry import with_retries
 
+    from . import ui
+
     augmented = request if not context else (
         f"Conversation so far:\n{context}\n\nNew request: {request}"
     )
-    result = with_retries(lambda: adapter.plan(augmented, repo), attempts=state.config.max_retries)
+    with ui.status(f"Planning with {adapter.name}…"):
+        result = with_retries(lambda: adapter.plan(augmented, repo), attempts=state.config.max_retries)
     state.record_usage("planner", adapter, req_id)
 
     plan_id = f"{date.today().isoformat()}-{_slug(request) or 'plan'}"

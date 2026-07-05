@@ -41,12 +41,15 @@ def run_task(state, task: Task, repo: RepoContext) -> Handoff:
 
     before = gitutil.changed_files(repo.root) if gitutil.is_git_repo(repo.root) else set()
 
+    from . import ui
+
     try:
-        result = with_retries(
-            lambda: adapter.execute(task, repo),
-            attempts=state.config.max_retries,
-            on_retry=lambda n, e: state.log(f"{task.id} execute retry {n}: {e}"),
-        )
+        with ui.status(f"{task.id}: executing with {adapter.name}…"):
+            result = with_retries(
+                lambda: adapter.execute(task, repo),
+                attempts=state.config.max_retries,
+                on_retry=lambda n, e: state.log(f"{task.id} execute retry {n}: {e}"),
+            )
     except Exception as exc:  # backend failed hard after retries
         return _escalate(state, task, adapter.name, [], "", f"executor error: {exc}")
 

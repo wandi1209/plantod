@@ -285,6 +285,9 @@ def review(requirement_id: str = typer.Argument(..., help="Requirement id, e.g. 
     except KeyError as e:
         ui.error(str(e))
         raise typer.Exit(1)
+    except Exception as e:  # reviewer backend failed -> clean message
+        ui.error(f"Review failed: {e}")
+        raise typer.Exit(1)
     rp = state.artifact_dir / "reviews" / f"{result.id}.md"
     ui.ok(f"Review ({result.verdict}): {rp}")
 

@@ -150,13 +150,25 @@ class CliAgent(ModelAdapter):
         except OSError as e:
             raise CliAgentError(f"{self.name} failed to launch: {e}") from e
         if proc.returncode != 0:
-            raise CliAgentError(f"{self.name} exited {proc.returncode}: {(proc.stderr or '')[-300:]}")
+            raise CliAgentError(self._friendly_error(proc.returncode, proc.stderr or ""))
         out = proc.stdout or ""
         from ..usage import estimate_tokens
 
         self.last_tokens_in = estimate_tokens(prompt)
         self.last_tokens_out = estimate_tokens(out)
         return out
+
+    def _friendly_error(self, code: int, stderr: str) -> str:
+        low = stderr.lower()
+        if "insufficient balance" in low or "billing" in low or "quota" in low:
+            return (f"{self.name}: provider account is out of credit/quota. Top up, or "
+                    f"switch model/provider with `plantod login`.")
+        if "unauthorized" in low or "authentication" in low or "not logged in" in low or "api key" in low:
+            return (f"{self.name}: not authenticated. Log in to the provider CLI "
+                    f"(e.g. `{self.spec.binary} auth login`), then retry.")
+        if "rate limit" in low or "429" in low:
+            return f"{self.name}: rate limited by the provider. Wait a moment and retry."
+        return f"{self.name} exited {code}: {stderr[-200:].strip()}"
 
     # -- roles ------------------------------------------------------------- #
     def plan(self, request: str, repo: RepoContext) -> PlanResult:

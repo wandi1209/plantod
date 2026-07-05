@@ -33,10 +33,13 @@ def review_requirement(state: StateManager, requirement_id: str, repo: RepoConte
     adapter = resolve(Role.reviewer, state.config)
     from .retry import with_retries
 
-    result = with_retries(
-        lambda: adapter.review(req.request, handoffs, repo),
-        attempts=state.config.max_retries,
-    )
+    from . import ui
+
+    with ui.status(f"Reviewing with {adapter.name}…"):
+        result = with_retries(
+            lambda: adapter.review(req.request, handoffs, repo),
+            attempts=state.config.max_retries,
+        )
     state.record_usage("reviewer", adapter, requirement_id)
 
     review = Review(

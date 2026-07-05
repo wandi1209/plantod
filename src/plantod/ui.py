@@ -20,6 +20,11 @@ def _emit(level: str, message: str) -> None:
     console.print(f"[{style}]\\[{level}][/{style}] {message}")
 
 
+def status(message: str):
+    """Transient spinner for long provider calls. Use as a context manager."""
+    return console.status(f"[cyan]{message}[/cyan]", spinner="dots")
+
+
 def info(message: str) -> None:
     _emit("INFO", message)
 

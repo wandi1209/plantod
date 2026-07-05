@@ -65,7 +65,8 @@ def _try_replan(state: StateManager, task: Task, repo: RepoContext) -> bool:
         fm, _ = read_doc(hp)
         reason = str(fm.get("risks_notes", ""))
     try:
-        guidance = planner_adapter.advise(task, reason, repo)
+        with ui.status(f"Re-planning {task.id} with {planner_adapter.name}…"):
+            guidance = planner_adapter.advise(task, reason, repo)
     except Exception as exc:  # planner unavailable -> leave escalated
         state.log(f"{task.id} replan failed: {exc}")
         return False
@@ -102,7 +103,11 @@ def _run_request_locked(state, request, repo, approval, auto_review, context="")
     ui.info(f"Reading request: {request}")
     ui.info("Scanning repository...")
 
-    plan, tasks = planner.make_plan(state, request, repo, context=context)
+    try:
+        plan, tasks = planner.make_plan(state, request, repo, context=context)
+    except Exception as exc:  # planner backend failed -> clean message, no traceback
+        ui.error(f"Planning failed: {exc}")
+        return
     plan_path = state.artifact_dir / "plans" / f"{plan.id}.md"
     ui.ok(f"Plan created: {plan_path}")
     ui.ok(f"{len(tasks)} tasks generated")
@@ -122,11 +127,11 @@ def _run_request_locked(state, request, repo, approval, auto_review, context="")
                 ui.warn(f"{task.id} skipped (not approved). Stopping run.")
                 break
 
-        executor.run_task(state, task, repo)
+        handoff = executor.run_task(state, task, repo)
         hp = state.artifact_dir / "handoffs" / f"{task.id}.md"
         current = state.get_task(task.id)
         if current.status is TaskStatus.needs_planner_review:
-            ui.error(f"{task.id} escalated -> needs_planner_review. Handoff: {hp}")
+            ui.error(f"{task.id} escalated: {handoff.risks_notes.replace('ESCALATED: ', '')}")
             if _try_replan(state, current, repo):
                 ui.info(f"Planner advised {task.id}; retrying (attempt {current.escalation_count}).")
                 continue
