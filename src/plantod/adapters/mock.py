@@ -23,6 +23,7 @@ class MockAdapter(ModelAdapter):
                 "id": "T001",
                 "title": f"Scaffold for: {request}",
                 "objective": f"Set up minimal structure for '{request}'.",
+                "spec": f"(mock) Create the minimal file layout for '{request}'.",
                 "files_allowed": ["*"],
                 "acceptance_criteria": ["structure exists"],
                 "test_command": repo.test_command,
@@ -33,6 +34,7 @@ class MockAdapter(ModelAdapter):
                 "id": "T002",
                 "title": f"Implement: {request}",
                 "objective": f"Implement core behavior for '{request}'.",
+                "spec": f"(mock) Implement the core behavior for '{request}' per the objective.",
                 "files_allowed": ["*"],
                 "acceptance_criteria": ["behavior works", "tests pass"],
                 "test_command": repo.test_command,
@@ -67,7 +69,8 @@ class MockAdapter(ModelAdapter):
         self._meter(f"{task.objective} {reason}", out)
         return out
 
-    def review(self, request: str, handoffs: list[Handoff], repo: RepoContext) -> ReviewResult:
+    def review(self, request: str, handoffs: list[Handoff], repo: RepoContext,
+               tasks: list[Task] | None = None) -> ReviewResult:
         result = ReviewResult(
             verdict="approve",
             summary=f"Mock review of '{request}': {len(handoffs)} handoff(s) look consistent.",

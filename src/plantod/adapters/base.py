@@ -57,7 +57,8 @@ class ModelAdapter(ABC):
     def execute(self, task: Task, repo: RepoContext) -> ExecResult: ...
 
     @abstractmethod
-    def review(self, request: str, handoffs: list[Handoff], repo: RepoContext) -> ReviewResult: ...
+    def review(self, request: str, handoffs: list[Handoff], repo: RepoContext,
+               tasks: list[Task] | None = None) -> ReviewResult: ...
 
     def advise(self, task: Task, reason: str, repo: RepoContext) -> str:
         """Planner guidance for a blocked/escalated task. Override in planner adapters."""

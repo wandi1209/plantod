@@ -27,7 +27,8 @@ def review_requirement(state: StateManager, requirement_id: str, repo: RepoConte
     if req is None:
         raise KeyError(f"unknown requirement '{requirement_id}'")
 
-    task_ids = [t.id for t in state.board.tasks.values() if t.requirement_id == requirement_id]
+    req_tasks = [t for t in state.board.tasks.values() if t.requirement_id == requirement_id]
+    task_ids = [t.id for t in req_tasks]
     handoffs = _load_handoffs(state, task_ids)
 
     adapter = resolve(Role.reviewer, state.config)
@@ -37,7 +38,7 @@ def review_requirement(state: StateManager, requirement_id: str, repo: RepoConte
 
     with ui.status(f"Reviewing with {adapter.label}…"):
         result = with_retries(
-            lambda: adapter.review(req.request, handoffs, repo),
+            lambda: adapter.review(req.request, handoffs, repo, req_tasks),
             attempts=state.config.max_retries,
         )
     state.record_usage("reviewer", adapter, requirement_id)

@@ -70,15 +70,32 @@ _SPECS: dict[str, ProviderSpec] = {
 
 _READONLY = "Do NOT modify, create, or delete any files. Only print the requested output."
 
-_PLAN_PROMPT = """You are PLANTOD's PLANNER. Read the request and repo context, then produce a
-small, scoped, testable plan. Break work into the fewest tasks that each touch a
-narrow file scope. {readonly}
+_PLAN_PROMPT = """You are PLANTOD's PLANNER. A WEAK, fast model will execute your tasks — it cannot
+make design or architecture decisions, only implement. So YOU must decide everything
+and write a thick, self-contained implementation spec per task (a mini-PRD). The
+executor should never have to invent anything; it just types out your spec.
+
+Read the request and repo context, then produce a small, scoped, testable plan.
+Break work into the fewest tasks that each touch a narrow file scope. {readonly}
+
+For EACH task, the `spec` field is the most important output. Make it concrete and
+prescriptive so a weak model produces work matching a strong model's quality:
+- VISUAL/UI task: exact layout (grid, sections, order), spacing scale, color tokens
+  (hex or named), typography (font, sizes, weights), component library to use and
+  which blocks to copy, responsive/hover/empty states, and a named style reference
+  (e.g. "clean SaaS like Linear/Stripe"). Never say "make it look nice" — specify it.
+- LOGIC/BACKEND task: function/module contracts (signatures, inputs, outputs),
+  data shapes, edge cases, error handling, and exactly what the tests must assert.
+If the repo has AGENTS.md / CLAUDE.md conventions, tell the executor to follow them.
+
 Respond with a short summary then ONE fenced ```json block matching exactly:
 {{"title": str, "summary": str, "risk_level": "low|medium|high",
- "tasks": [{{"id": "T001", "title": str, "objective": str,
+ "tasks": [{{"id": "T001", "title": str, "objective": str, "spec": str,
             "files_allowed": [str], "acceptance_criteria": [str],
             "test_command": str|null, "risk_level": "low|medium|high",
             "depends_on": [str]}}]}}
+`spec` is a multi-paragraph string; `acceptance_criteria` are specific, checkable
+statements a reviewer can verify one by one.
 
 REQUEST:
 {request}
@@ -86,13 +103,21 @@ REQUEST:
 REPO CONTEXT:
 {repo}"""
 
-_REVIEW_PROMPT = """You are PLANTOD's REVIEWER. Judge whether the task handoffs satisfy the request.
+_REVIEW_PROMPT = """You are PLANTOD's REVIEWER. A weak model did the editing, so do not trust that the
+work is good — verify it. Check the actual repo state against EACH acceptance
+criterion below, one at a time. A criterion is only met if you can confirm it in the
+code. For UI, also judge whether the result matches the spec's stated design
+(layout, tokens, components) — flag anything that looks off or generic.
 {readonly}
-Respond with a short summary then ONE fenced ```json block:
+Respond with a short summary then ONE fenced ```json block. Set verdict to "revise"
+if ANY criterion fails; list each failing criterion as a finding "TXXX: <what fails>".
 {{"verdict": "approve|revise", "summary": str, "findings": [str]}}
 
 REQUEST:
 {request}
+
+ACCEPTANCE CRITERIA PER TASK (verify each against the repo):
+{criteria}
 
 HANDOFFS:
 {handoffs}
@@ -102,13 +127,22 @@ REPO:
 
 _EXEC_PROMPT = """Task {id}: {title}
 Objective: {objective}
+
+IMPLEMENTATION SPEC — follow this exactly. Do not deviate, redesign, or "improve"
+on it. All decisions are already made here; your job is only to implement them:
+{spec}
+
+If this repo has an AGENTS.md or CLAUDE.md, read it first and follow its conventions
+(style, component library, tokens). Match the patterns of existing code around you.
+
 {guidance}You MAY only edit these files: {allowed}
 You MUST NOT edit: {forbidden}
-Acceptance criteria:
+Acceptance criteria (every one must hold when you finish):
 {criteria}
 Keep the change small and scoped. Do not refactor beyond the task.
-If the task needs architecture decisions or cross-module changes, STOP and print
-'ESCALATE: <reason>' instead of editing."""
+If the spec is missing a decision you cannot make safely, or the task needs
+architecture/cross-module changes, STOP and print 'ESCALATE: <reason>' instead of
+guessing."""
 
 _ADVISE_PROMPT = """You are PLANTOD's PLANNER unblocking an escalated task. {readonly}
 Give concise, concrete guidance (2-5 sentences) so a fast executor can retry within
@@ -191,6 +225,7 @@ class CliAgent(ModelAdapter):
     def execute(self, task: Task, repo: RepoContext) -> ExecResult:
         prompt = _EXEC_PROMPT.format(
             id=task.id, title=task.title, objective=task.objective,
+            spec=task.spec.strip() or "(no detailed spec provided — implement the objective faithfully)",
             guidance=f"Planner guidance: {task.planner_guidance}\n" if task.planner_guidance else "",
             allowed=", ".join(task.files_allowed) or "(stay minimal)",
             forbidden=", ".join(task.files_forbidden) or "(none)",
@@ -205,13 +240,19 @@ class CliAgent(ModelAdapter):
             return ExecResult(escalate=True, escalate_reason=reason or "agent requested escalation", raw=raw)
         return ExecResult(summary=raw.strip()[-2000:], raw=raw)
 
-    def review(self, request: str, handoffs: list[Handoff], repo: RepoContext) -> ReviewResult:
+    def review(self, request: str, handoffs: list[Handoff], repo: RepoContext,
+               tasks: list[Task] | None = None) -> ReviewResult:
         hs = "\n\n".join(
             f"[{h.task_id}] {h.summary_of_changes}\ntests: {h.test_result}\nrisks: {h.risks_notes}"
             for h in handoffs
         ) or "(no handoffs)"
+        criteria = "\n".join(
+            f"{t.id} — {t.title}:\n" + "\n".join(f"  - {c}" for c in t.acceptance_criteria)
+            for t in (tasks or []) if t.acceptance_criteria
+        ) or "(none specified)"
         raw = self._run(
-            _REVIEW_PROMPT.format(readonly=_READONLY, request=request, handoffs=hs, repo=repo.summary(30)),
+            _REVIEW_PROMPT.format(readonly=_READONLY, request=request, criteria=criteria,
+                                  handoffs=hs, repo=repo.summary(30)),
             repo.root,
         )
         data = extract_json(raw)

@@ -149,6 +149,10 @@ class Task(BaseModel):
     id: str
     title: str
     objective: str
+    # Detailed, self-contained implementation spec (a mini-PRD) written by the
+    # strong planner so a weak executor only has to implement, never decide.
+    # For UI: layout/tokens/components; for logic: contracts/edge cases.
+    spec: str = ""
     files_allowed: list[str] = Field(default_factory=list)
     files_forbidden: list[str] = Field(default_factory=list)
     acceptance_criteria: list[str] = Field(default_factory=list)

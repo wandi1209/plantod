@@ -116,9 +116,11 @@ class StateManager:
         return self.board.tasks.get(task_id)
 
     def _write_task_doc(self, task: Task) -> None:
+        spec_section = f"## Spec\n{task.spec}\n\n" if task.spec.strip() else ""
         body = (
             f"# {task.id} — {task.title}\n\n"
             f"## Objective\n{task.objective}\n\n"
+            f"{spec_section}"
             f"## Acceptance Criteria\n"
             + "\n".join(f"- {c}" for c in task.acceptance_criteria)
             + "\n"

@@ -81,6 +81,28 @@ plantod mode auto --project   # set for this repo only
   scope guard and escalation loop still apply, so out-of-scope edits are reverted
   and blocked tasks are re-planned automatically.
 
+## Getting good output from a cheap executor
+
+The point of routing is a **weak, cheap model on the executor**. Left alone it invents
+its own (often ugly) design and low-quality code. PLANTOD keeps quality high by moving
+every decision **off** the executor and onto the strong planner/reviewer:
+
+- **Spec-per-task (mini-PRD).** The planner writes a thick `spec` for each task — for
+  UI: layout, spacing scale, color tokens, component library, a named style reference;
+  for logic: contracts, edge cases, what the tests assert. The executor implements the
+  spec verbatim; it never designs. The spec is stored in `.plantod/tasks/T00x.md` and
+  injected into the executor prompt.
+- **`AGENTS.md` conventions.** `plantod init` scaffolds an `AGENTS.md` at the repo root.
+  Agentic executor CLIs read it automatically, so fill in your stack, lint, and design
+  system (e.g. "Tailwind + shadcn — copy blocks, don't hand-roll"). This is the single
+  biggest quality lever for a small model — it copies your standards instead of guessing.
+- **Per-criterion review.** The reviewer checks the repo against each acceptance
+  criterion one by one and returns `revise` (re-plan + retry) if any fails.
+
+Practical recipe for good UI from a cheap executor: keep `AGENTS.md` filled with your
+design system, let the planner emit a detailed visual spec, and paste a reference URL
+or existing good page into your request so the executor **clones** instead of inventing.
+
 ## Prerequisites
 
 - Install the CLI for each provider you configure (see table above); each tool

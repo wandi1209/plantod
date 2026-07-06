@@ -58,11 +58,47 @@ def init() -> None:
         return
     state.initialize()
     ui.ok(f"Initialized {state.artifact_dir}")
+    _scaffold_conventions(state.root)
     c = state.config
     ui.info(f"Mode: {c.mode} | {_providers_line(c)}")
     ui.info(f"Detected test command: {repo.test_command or 'none'}")
     _report_preflight(state)
     ui.info("Next: `plantod login` to set providers, then `plantod plan \"<request>\"`.")
+
+
+_AGENTS_TEMPLATE = """# Project conventions
+
+The executor (a fast, weak model driven by PLANTOD) reads this file before editing.
+Fill it in so it copies your standards instead of inventing its own — this is the
+single biggest lever on output quality when the executor model is small.
+
+## Stack & style
+- Language / framework: <e.g. TypeScript + React + Vite>
+- Formatting / lint: <e.g. run `ruff` / `prettier`; 2-space indent>
+- Follow the patterns of existing code nearby; do not introduce new libraries.
+
+## UI (delete if no frontend)
+- Component library: <e.g. Tailwind + shadcn/ui — copy shadcn blocks, don't hand-roll>
+- Design tokens: colors <...>, spacing scale <4/8/16>, font <Inter>, radius <...>
+- Reference look: <e.g. clean SaaS like Linear / Stripe>. No generic/boilerplate UI.
+
+## Rules
+- Keep changes scoped to the task's allowed files.
+- Never guess an architecture decision — stop and escalate instead.
+"""
+
+
+def _scaffold_conventions(root: Path) -> None:
+    """Write a starter AGENTS.md at the repo root if no convention file exists.
+
+    Agentic executor CLIs (claude-code, opencode, …) read AGENTS.md / CLAUDE.md
+    automatically, so this is where design/quality standards get injected without
+    touching each prompt (issue: weak executor invents its own, ugly conventions).
+    """
+    if any((root / n).exists() for n in ("AGENTS.md", "CLAUDE.md")):
+        return
+    (root / "AGENTS.md").write_text(_AGENTS_TEMPLATE, encoding="utf-8")
+    ui.info("Wrote AGENTS.md — fill it in so the executor follows your conventions.")
 
 
 def _report_preflight(state: StateManager) -> None:
